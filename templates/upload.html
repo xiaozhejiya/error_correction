@@ -513,7 +513,7 @@
                 if (xhr.status === 200) {
                     const response = JSON.parse(xhr.responseText);
                     showStatus('success', `✅ 上传成功！文件已保存：${response.filename}`);
-                    addToUploadedList(file.name, file.size);
+                    addToUploadedList(file.name, file.size, response.filename);
                     resetUpload();
                 } else {
                     showStatus('error', '❌ 上传失败，请重试');
@@ -544,7 +544,7 @@
             statusMessage.style.display = 'block';
         }
 
-        function addToUploadedList(name, size) {
+        function addToUploadedList(name, size, savedFilename) {
             const li = document.createElement('li');
             li.className = 'file-item';
             const fileIndex = fileList.children.length;
@@ -553,7 +553,9 @@
 
             // 检查是否为图片
             const isImage = isImageFile(name);
-            const fileUrl = `/uploads/${encodeURIComponent(name)}`;
+            // 使用服务器返回的实际文件名
+            const actualFilename = savedFilename || name;
+            const fileUrl = `/uploads/${encodeURIComponent(actualFilename)}`;
 
             if (isImage) {
                 // 如果是图片，显示缩略图
