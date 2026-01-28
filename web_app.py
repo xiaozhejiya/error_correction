@@ -43,6 +43,46 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/upload-page')
+def upload_page():
+    """文件上传页面"""
+    return render_template('upload.html')
+
+
+@app.route('/upload', methods=['POST'])
+def simple_upload():
+    """
+    简单文件上传接口（不执行OCR工作流）
+    用于文件上传演示页面
+    """
+    if 'file' not in request.files:
+        return jsonify({'error': '没有上传文件'}), 400
+
+    file = request.files['file']
+
+    if file.filename == '':
+        return jsonify({'error': '未选择文件'}), 400
+
+    try:
+        # 保存文件
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+
+        # 获取文件大小
+        file_size = os.path.getsize(filepath)
+
+        return jsonify({
+            'message': '文件上传成功',
+            'filename': filename,
+            'size': file_size,
+            'path': f'/uploads/{filename}'
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
     """
@@ -230,6 +270,12 @@ def preview():
         return content
     else:
         return "预览文件不存在，请先分割题目", 404
+
+
+@app.route('/uploads/<path:filename>')
+def uploaded_file(filename):
+    """访问上传的文件"""
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
 @app.route('/download/<path:filename>')

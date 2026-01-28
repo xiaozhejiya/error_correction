@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件上传 - 进度条演示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 50px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f8f9ff;
+        }
+
+        .upload-area.dragover {
+            background: #e8ecff;
+            border-color: #4c51bf;
+        }
+
+        .upload-icon {
+            font-size: 60px;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            color: #999;
+            font-size: 14px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .file-info {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .file-name {
+            color: #333;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .file-size {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .progress-container {
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .progress-bar-wrapper {
+            background: #e0e0e0;
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .progress-text {
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            line-height: 30px;
+        }
+
+        .status-message {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            width: 100%;
+            transition: transform 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .uploaded-files {
+            margin-top: 30px;
+        }
+
+        .uploaded-files h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .file-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .selection-info {
+            color: #667eea;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .selection-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            background: #764ba2;
+            transform: translateY(-1px);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .file-list {
+            list-style: none;
+        }
+
+        .file-item {
+            background: #f8f9fa;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .file-item:hover {
+            background: #e9ecef;
+        }
+
+        .file-item.selected {
+            background: #e8ecff;
+            border: 2px solid #667eea;
+            padding: 10px 13px;
+        }
+
+        .file-item-checkbox {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            cursor: pointer;
+            accent-color: #667eea;
+        }
+
+        .file-item-name {
+            color: #333;
+            font-weight: 500;
+        }
+
+        .file-item-size {
+            color: #999;
+            font-size: 12px;
+        }
+
+        /* 图片缩略图样式 */
+        .image-thumbnail {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-right: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid #e0e0e0;
+        }
+
+        .image-thumbnail:hover {
+            transform: scale(1.1);
+            border-color: #667eea;
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .file-item-content {
+            display: flex;
+            align-items: center;
+        }
+
+        /* 图片放大预览模态框 */
+        .image-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.95);
+            animation: fadeIn 0.3s;
+        }
+
+        .image-modal.active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .image-modal-content {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            animation: zoomIn 0.3s;
+            border-radius: 8px;
+        }
+
+        .image-modal-close {
+            position: absolute;
+            top: 20px;
+            right: 40px;
+            color: #fff;
+            font-size: 45px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+        }
+
+        .image-modal-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: rotate(90deg);
+        }
+
+        .image-modal-filename {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            font-size: 16px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 20px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes zoomIn {
+            from {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📁 文件上传演示</h1>
+        
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📤</div>
+            <div class="upload-text">点击或拖拽文件到此处</div>
+            <div class="upload-hint">支持任意文件格式</div>
+        </div>
+
+        <input type="file" id="fileInput" multiple>
+
+        <div class="file-info" id="fileInfo">
+            <div class="file-name" id="fileName"></div>
+            <div class="file-size" id="fileSize"></div>
+        </div>
+
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar-wrapper">
+                <div class="progress-bar" id="progressBar"></div>
+                <div class="progress-text" id="progressText">0%</div>
+            </div>
+        </div>
+
+        <button class="btn" id="uploadBtn" style="display: none;">开始上传</button>
+
+        <div class="status-message" id="statusMessage"></div>
+
+        <div class="uploaded-files" id="uploadedFiles" style="display: none;">
+            <h3>已上传文件</h3>
+            <div class="file-list-header">
+                <div class="selection-info" id="selectionInfo">已选中 0 个文件</div>
+                <div class="selection-actions">
+                    <button class="action-btn" id="selectAllBtn" title="Ctrl+A">全选</button>
+                    <button class="action-btn" id="deselectAllBtn" disabled>取消全选</button>
+                </div>
+            </div>
+            <ul class="file-list" id="fileList"></ul>
+        </div>
+    </div>
+
+    <!-- 图片放大预览模态框 -->
+    <div class="image-modal" id="imageModal">
+        <span class="image-modal-close" id="modalClose">&times;</span>
+        <img class="image-modal-content" id="modalImage">
+        <div class="image-modal-filename" id="modalFilename"></div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const statusMessage = document.getElementById('statusMessage');
+        const uploadedFiles = document.getElementById('uploadedFiles');
+        const fileList = document.getElementById('fileList');
+
+        let selectedFile = null;
+        const imageModal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        const modalFilename = document.getElementById('modalFilename');
+        const modalClose = document.getElementById('modalClose');
+        const selectionInfo = document.getElementById('selectionInfo');
+        const selectAllBtn = document.getElementById('selectAllBtn');
+        const deselectAllBtn = document.getElementById('deselectAllBtn');
+
+        let selectedFiles = new Set(); // 存储选中的文件索引
+
+        // 点击上传区域
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // 文件选择
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        // 拖拽上传
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        function handleFiles(files) {
+            if (files.length === 0) return;
+
+            selectedFile = files[0];
+            
+            // 显示文件信息
+            fileName.textContent = `文件名: ${selectedFile.name}`;
+            fileSize.textContent = `大小: ${formatFileSize(selectedFile.size)}`;
+            fileInfo.style.display = 'block';
+            uploadBtn.style.display = 'block';
+            
+            // 隐藏状态消息
+            statusMessage.style.display = 'none';
+        }
+
+        // 上传按钮点击
+        uploadBtn.addEventListener('click', () => {
+            if (!selectedFile) return;
+            uploadFile(selectedFile);
+        });
+
+        function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            progressContainer.style.display = 'block';
+            uploadBtn.disabled = true;
+
+            const xhr = new XMLHttpRequest();
+
+            // 上传进度
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    updateProgress(percentComplete);
+                }
+            });
+
+            // 上传完成
+            xhr.addEventListener('load', () => {
+                if (xhr.status === 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    showStatus('success', `✅ 上传成功！文件已保存：${response.filename}`);
+                    addToUploadedList(file.name, file.size);
+                    resetUpload();
+                } else {
+                    showStatus('error', '❌ 上传失败，请重试');
+                    uploadBtn.disabled = false;
+                }
+            });
+
+            // 上传错误
+            xhr.addEventListener('error', () => {
+                showStatus('error', '❌ 上传过程中发生错误');
+                uploadBtn.disabled = false;
+            });
+
+            // 发送请求
+            xhr.open('POST', '/upload');
+            xhr.send(formData);
+        }
+
+        function updateProgress(percent) {
+            const rounded = Math.round(percent);
+            progressBar.style.width = `${rounded}%`;
+            progressText.textContent = `${rounded}%`;
+        }
+
+        function showStatus(type, message) {
+            statusMessage.className = `status-message ${type}`;
+            statusMessage.textContent = message;
+            statusMessage.style.display = 'block';
+        }
+
+        function addToUploadedList(name, size) {
+            const li = document.createElement('li');
+            li.className = 'file-item';
+            const fileIndex = fileList.children.length;
+            li.dataset.fileIndex = fileIndex;
+            li.dataset.fileName = name;
+
+            // 检查是否为图片
+            const isImage = isImageFile(name);
+            const fileUrl = `/uploads/${encodeURIComponent(name)}`;
+
+            if (isImage) {
+                // 如果是图片，显示缩略图
+                li.innerHTML = `
+                    <div class="file-item-content">
+                        <input type="checkbox" class="file-item-checkbox" data-index="${fileIndex}">
+                        <img src="${fileUrl}" class="image-thumbnail" alt="${name}" title="点击查看大图">
+                        <div>
+                            <div class="file-item-name">${name}</div>
+                            <div class="file-item-size">${formatFileSize(size)}</div>
+                        </div>
+                    </div>
+                    <span>✓</span>
+                `;
+
+                // 添加点击事件，打开大图预览
+                const thumbnail = li.querySelector('.image-thumbnail');
+                thumbnail.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openImageModal(fileUrl, name);
+                });
+            } else {
+                // 非图片文件，使用原有样式
+                li.innerHTML = `
+                    <div class="file-item-content">
+                        <input type="checkbox" class="file-item-checkbox" data-index="${fileIndex}">
+                        <div>
+                            <div class="file-item-name">${name}</div>
+                            <div class="file-item-size">${formatFileSize(size)}</div>
+                        </div>
+                    </div>
+                    <span>✓</span>
+                `;
+            }
+
+            // 复选框点击事件
+            const checkbox = li.querySelector('.file-item-checkbox');
+            checkbox.addEventListener('change', (e) => {
+                e.stopPropagation();
+                handleFileSelection(fileIndex, checkbox.checked);
+            });
+
+            // 列表项点击事件（切换选中状态）
+            li.addEventListener('click', (e) => {
+                if (e.target.tagName !== 'INPUT' && !e.target.classList.contains('image-thumbnail')) {
+                    checkbox.checked = !checkbox.checked;
+                    handleFileSelection(fileIndex, checkbox.checked);
+                }
+            });
+
+            fileList.appendChild(li);
+            uploadedFiles.style.display = 'block';
+        }
+
+        function resetUpload() {
+            setTimeout(() => {
+                selectedFile = null;
+                fileInput.value = '';
+                fileInfo.style.display = 'none';
+                progressContainer.style.display = 'none';
+                uploadBtn.style.display = 'none';
+                uploadBtn.disabled = false;
+                progressBar.style.width = '0%';
+                progressText.textContent = '0%';
+            }, 2000);
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        // 判断文件是否为图片
+        function isImageFile(filename) {
+            const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'];
+            const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'));
+            return imageExtensions.includes(ext);
+        }
+
+        // 打开图片预览模态框
+        function openImageModal(imageSrc, filename) {
+            modalImage.src = imageSrc;
+            modalFilename.textContent = filename;
+            imageModal.classList.add('active');
+            document.body.style.overflow = 'hidden'; // 防止背景滚动
+        }
+
+        // 关闭图片预览模态框
+        function closeImageModal() {
+            imageModal.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        // 模态框关闭按钮事件
+        modalClose.addEventListener('click', closeImageModal);
+
+        // 点击模态框背景关闭
+        imageModal.addEventListener('click', (e) => {
+            if (e.target === imageModal) {
+                closeImageModal();
+            }
+        });
+
+        // ESC键关闭模态框
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && imageModal.classList.contains('active')) {
+                closeImageModal();
+            }
+        });
+
+        // 处理文件选择
+        function handleFileSelection(fileIndex, isSelected) {
+            const fileItem = document.querySelector(`[data-file-index="${fileIndex}"]`);
+
+            if (isSelected) {
+                selectedFiles.add(fileIndex);
+                fileItem.classList.add('selected');
+            } else {
+                selectedFiles.delete(fileIndex);
+                fileItem.classList.remove('selected');
+            }
+
+            updateSelectionInfo();
+        }
+
+        // 更新选中信息
+        function updateSelectionInfo() {
+            const count = selectedFiles.size;
+            const total = fileList.children.length;
+
+            selectionInfo.textContent = `已选中 ${count} / ${total} 个文件`;
+
+            // 更新按钮状态
+            selectAllBtn.disabled = count === total && total > 0;
+            deselectAllBtn.disabled = count === 0;
+        }
+
+        // 全选
+        function selectAllFiles() {
+            const checkboxes = document.querySelectorAll('.file-item-checkbox');
+            checkboxes.forEach((checkbox, index) => {
+                checkbox.checked = true;
+                handleFileSelection(index, true);
+            });
+        }
+
+        // 取消全选
+        function deselectAllFiles() {
+            const checkboxes = document.querySelectorAll('.file-item-checkbox');
+            checkboxes.forEach((checkbox, index) => {
+                checkbox.checked = false;
+                handleFileSelection(index, false);
+            });
+        }
+
+        // 全选按钮事件
+        selectAllBtn.addEventListener('click', selectAllFiles);
+
+        // 取消全选按钮事件
+        deselectAllBtn.addEventListener('click', deselectAllFiles);
+
+        // Ctrl+A 快捷键全选文件
+        document.addEventListener('keydown', (e) => {
+            // 检查是否按下 Ctrl+A（Windows/Linux）或 Cmd+A（Mac）
+            if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+                // 只有在文件列表可见且不在输入框中时才响应
+                const activeElement = document.activeElement;
+                const isInputFocused = activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA';
+
+                if (!isInputFocused && uploadedFiles.style.display !== 'none') {
+                    e.preventDefault(); // 阻止默认的全选行为
+                    selectAllFiles();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
