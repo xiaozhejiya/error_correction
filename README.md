@@ -1,186 +1,214 @@
 # 错题本生成系统
 
-基于PaddleOCR和LangChain Agent的智能错题本生成系统。
+基于 PaddleOCR 和 LangChain Agent 的智能错题本生成系统。支持上传 PDF 或图片格式的试卷/习题，通过 OCR 结构化解析和 AI 智能分割，自动提取题目并导出为 Markdown 格式的错题本。
 
 ## 项目结构
 
 ```
 error_correction/
-├── error_correction_agent/     # Agent相关代码
-│   ├── prompts.py              # Agent系统提示词
-│   ├── agent.py                # Agent创建和配置
-│   └── tools/                  # Agent工具集
+├── error_correction_agent/     # Agent 相关代码
+│   ├── prompts.py              # Agent 系统提示词
+│   ├── agent.py                # Agent 创建和配置
+│   └── tools/                  # Agent 工具集
 │       ├── __init__.py
 │       ├── question_tools.py   # 题目处理工具
 │       └── file_tools.py       # 文件操作工具
 │
 ├── src/                        # 核心功能模块
-│   ├── paddleocr_client.py     # PaddleOCR API客户端
-│   ├── workflow.py             # 工作流编排
+│   ├── paddleocr_client.py     # PaddleOCR API 客户端
+│   ├── workflow.py             # LangGraph 工作流编排
 │   └── utils.py                # 通用工具函数
 │
-├── input/                      # 输入文件目录
-├── output/                     # 输出目录
-│   ├── pages/                  # 标准化后的图片
-│   ├── struct/                 # PaddleOCR解析结果
-│   └── assets/                 # 图片资源
+├── templates/                  # HTML 模板
+│   └── index.html              # Web 界面主页
+│
+├── static/                     # 静态资源
+│   └── css/
+│       └── style.css           # 样式表
+│
+├── uploads/                    # 上传文件临时存储
+├── output/                     # 处理输出目录
+│   ├── pages/                  # 标准化后的图片（PDF 转 PNG）
+│   ├── struct/                 # PaddleOCR 解析结果（JSON）
+│   └── assets/                 # 下载的图片资源
 │
 ├── results/                    # 最终结果
 │   ├── questions.json          # 分割后的题目
 │   ├── preview.html            # 题目预览页面
-│   └── wrongbook.md            # 导出的错题本
+│   ├── wrongbook.md            # 导出的错题本
+│   └── split_issues.jsonl      # Agent 处理问题日志
 │
-├── .env                        # 环境变量配置
-├── test_paddleocr.py           # PaddleOCR测试
-└── test_workflow.py            # 工作流测试
+├── web_app.py                  # Flask Web 应用入口
+├── requirements.txt            # Python 依赖
+├── .env.example                # 环境变量模板
+├── langgraph.json              # LangGraph 配置
+└── WEB_APP_GUIDE.md            # Web 应用使用指南
 ```
 
 ## 工作流程
 
-### 简化的5步流程
+系统采用 LangGraph 构建 4 步处理流水线，在关键节点设置中断以支持 Web 端分步交互：
 
-1. **prepare_input** (确定性) - 将PDF/图片转换为标准化图片
-2. **paddleocr_parse** (确定性) - 调用PaddleOCR API解析文档结构
-3. **split_questions** (智能) - 使用LLM Agent智能分割题目
-4. **build_preview** (确定性) - 生成HTML预览页面
-5. **export_wrongbook** (确定性) - 导出Markdown格式错题本
+```
+START → prepare_input → ocr_parse → [中断] → split_questions → [中断] → export → END
+```
+
+| 步骤 | 节点 | 类型 | 说明 |
+|------|------|------|------|
+| 1 | `prepare_input` | 确定性 | 将 PDF/图片转换为标准化 PNG 图片 |
+| 2 | `ocr_parse` | 确定性 | 调用 PaddleOCR API 解析文档结构 |
+| 3 | `split_questions` | 智能（Agent） | 使用 DeepSeek Agent 智能分割题目 |
+| 4 | `export` | 确定性 | 将选中题目导出为 Markdown 错题本 |
 
 ### 技术架构
 
-- **步骤1-2, 4-5**: 确定性逻辑，不需要LLM
-- **步骤3**: 核心智能步骤，使用LangChain Agent
-  - 模型: DeepSeek Chat
-  - 工具: save_questions, log_issue, download_image, read_ocr_result
+- **步骤 1-2, 4**: 确定性逻辑，不需要 LLM
+- **步骤 3**: 核心智能步骤，使用 LangChain Agent
+  - 模型: DeepSeek Chat（temperature=0.1）
+  - 工具: `save_questions`, `log_issue`, `download_image`, `read_ocr_result`
   - 提示词: 定义在 `error_correction_agent/prompts.py`
+
+## 安装指南
+
+### 环境要求
+
+- **Python**: 3.8 或更高版本
+- **操作系统**: Windows / macOS / Linux
+- **外部服务**（需申请 API Key）:
+  - [PaddleOCR API](https://www.paddlepaddle.org.cn/) — 文档 OCR 结构化解析
+  - [DeepSeek API](https://platform.deepseek.com/) — LLM 智能题目分割
+
+### 系统依赖
+
+本项目使用 `pdf2image` 将 PDF 转换为图片，该库依赖 **poppler**：
+
+**Windows**:
+1. 下载 [poppler for Windows](https://github.com/ossamamehmood/Poppler-Windows/releases)
+2. 解压到任意目录（如 `C:\poppler`）
+3. 将 `C:\poppler\Library\bin` 添加到系统环境变量 `PATH`
+
+**macOS**:
+```bash
+brew install poppler
+```
+
+**Linux (Ubuntu/Debian)**:
+```bash
+sudo apt-get install poppler-utils
+```
+
+### 步骤 1: 克隆项目
+
+```bash
+git clone <仓库地址>
+cd error_correction
+```
+
+### 步骤 2: 创建虚拟环境（推荐）
+
+```bash
+# 创建虚拟环境
+python -m venv venv
+
+# 激活虚拟环境
+# Windows:
+venv\Scripts\activate
+# macOS/Linux:
+source venv/bin/activate
+```
+
+### 步骤 3: 安装 Python 依赖
+
+```bash
+pip install -r requirements.txt
+```
+
+`requirements.txt` 包含以下核心依赖：
+
+| 分类 | 包名 | 说明 |
+|------|------|------|
+| Agent 框架 | `langchain`, `langgraph`, `deepagents` | LangChain 生态 + LangGraph 工作流 |
+| 模型适配 | `langchain-deepseek`, `langchain-openai` | DeepSeek / OpenAI 模型接口 |
+| Web 框架 | `flask`, `werkzeug` | HTTP API 和 Web 界面 |
+| 图像处理 | `pdf2image`, `Pillow`, `opencv-python` | PDF 转图片、图像操作 |
+| 工具库 | `python-dotenv`, `requests`, `pydantic`, `rich` | 环境配置、HTTP、数据验证、CLI 输出 |
+
+### 步骤 4: 配置环境变量
+
+```bash
+# 复制环境变量模板
+cp .env.example .env
+```
+
+编辑 `.env` 文件，填写必需的 API 密钥：
+
+```bash
+# ===== 必需配置 =====
+
+# DeepSeek API（用于 Agent 智能分割）
+DEEPSEEK_API_KEY=your_deepseek_api_key
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+
+# PaddleOCR API（用于文档 OCR 解析）
+PADDLEOCR_API_URL=https://your-paddleocr-api-url
+PADDLEOCR_API_TOKEN=your_paddleocr_token
+
+# ===== 可选配置 =====
+
+# LangSmith 追踪（调试用，可查看 Agent 执行轨迹）
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=your_langsmith_key
+LANGSMITH_PROJECT=error-correction
+
+# PaddleOCR 功能开关
+PADDLEOCR_USE_DOC_ORIENTATION=false
+PADDLEOCR_USE_DOC_UNWARPING=false
+PADDLEOCR_USE_CHART_RECOGNITION=false
+
+# 输出目录（一般无需修改）
+OUTPUT_DIR=output
+PAGES_DIR=output/pages
+STRUCT_DIR=output/struct
+ASSETS_DIR=output/assets
+RESULTS_DIR=results
+```
+
+### 步骤 5: 验证安装
+
+```bash
+# 检查 Python 依赖是否安装成功
+python -c "import langchain; import langgraph; import flask; print('依赖安装成功')"
+
+# 启动 Web 应用验证
+python web_app.py
+```
+
+启动后访问 **http://localhost:5001**，页面顶部的系统状态指示器会显示各项服务是否配置正确。
 
 ## 快速开始
 
-### 1. 环境配置
-
-复制 `.env.example` 为 `.env` 并填写配置:
+### 使用 Web 界面（推荐）
 
 ```bash
-# PaddleOCR API
-PADDLEOCR_API_URL=https://...
-PADDLEOCR_API_TOKEN=your_token
-
-# DeepSeek API (用于Agent)
-DEEPSEEK_API_KEY=your_key
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-
-# LangSmith (可选，用于追踪)
-LANGSMITH_TRACING=true
-LANGSMITH_API_KEY=your_key
-LANGSMITH_PROJECT=error-correction
-```
-
-### 2. 测试PaddleOCR
-
-```bash
-# 在 input/ 目录放置测试图片 test.jpg
-python test_paddleocr.py
-```
-
-### 3. 使用Web界面（推荐） 🌟
-
-最简单的使用方式，提供可视化界面：
-
-```bash
-# 启动Web应用
 python web_app.py
-
 ```
 
-然后访问 **http://localhost:5001**
+打开浏览器访问 **http://localhost:5001**，按以下步骤操作：
 
-**功能**:
-- ✅ 拖拽上传PDF/图片
-- ✅ 自动OCR解析和题目分割
-- ✅ 可视化预览所有题目
-- ✅ 勾选需要的题目并导出
+1. **上传文件** — 拖拽或点击上传 PDF / 图片
+2. **自动 OCR 解析** — 系统自动调用 PaddleOCR 进行文档结构化解析
+3. **AI 分割题目** — 点击"开始分割题目"，DeepSeek Agent 智能识别并分割题目
+4. **预览与导出** — 勾选需要的题目，点击"导出错题本"下载 Markdown 文件
 
-详细使用说明请查看 [WEB_APP_GUIDE.md](WEB_APP_GUIDE.md)
+**支持的文件格式**: PDF (`.pdf`)、图片 (`.png`, `.jpg`, `.jpeg`, `.bmp`, `.tiff`, `.webp`)
 
-### 4. 命令行使用
+**文件大小限制**: 50MB
 
-#### 方式1: 不使用Agent（仅测试步骤1-2）
-
-```python
-from src.workflow import ErrorCorrectionWorkflow
-
-workflow = ErrorCorrectionWorkflow()
-workflow.run("input/test.jpg", auto_split=False)
-```
-
-#### 方式2: 使用Agent完整流程
-
-```python
-from src.workflow import ErrorCorrectionWorkflow
-
-# 创建工作流
-workflow = ErrorCorrectionWorkflow()
-
-# 步骤1-2: 准备和解析
-workflow.run("input/test.jpg", auto_split=False)
-
-# 步骤3: Agent分割题目
-questions = workflow.split_questions_with_agent()
-
-# 步骤4: 查看HTML预览（自动生成）
-# 打开 results/preview.html
-
-# 步骤5: 导出选中的题目
-workflow.export_selected(["1", "2", "3"])
-```
-
-## Agent工具说明
-
-### 1. save_questions
-保存分割后的题目列表到JSON文件
-
-```python
-save_questions(
-    questions=[{
-        "question_id": "1",
-        "question_type": "选择题",
-        "content_blocks": [...],
-        "options": ["A. ...", "B. ..."],
-        ...
-    }]
-)
-```
-
-### 2. log_issue
-记录分割过程中的问题
-
-```python
-log_issue(
-    issue_type="unclear_boundary",
-    description="题号不清晰，难以判断题目起始位置",
-    block_info={...}
-)
-```
-
-### 3. download_image
-下载PaddleOCR返回的图片
-
-```python
-download_image(
-    image_url="https://...",
-    save_path="imgs/figure_1.jpg"
-)
-```
-
-### 4. read_ocr_result
-读取OCR结果JSON
-
-```python
-result = read_ocr_result("output/struct/test_struct.json")
-```
+详细操作说明请查看 [WEB_APP_GUIDE.md](WEB_APP_GUIDE.md)
 
 ## 开发指南
 
-### 修改Agent提示词
+### 修改 Agent 提示词
 
 编辑 `error_correction_agent/prompts.py` 中的 `SYSTEM_PROMPT`
 
@@ -193,85 +221,48 @@ result = read_ocr_result("output/struct/test_struct.json")
 
 ### 自定义工作流
 
-修改 `src/workflow.py` 中的 `ErrorCorrectionWorkflow` 类
+修改 `src/workflow.py` 中的 `build_workflow()` 函数，可调整节点和边的定义。
 
-## 输出格式
+## 输出说明
 
-### 题目JSON格式
-
-```json
-{
-  "question_id": "1",
-  "question_type": "选择题/填空题/解答题/判断题",
-  "content_blocks": [
-    {
-      "block_type": "text",
-      "content": "题干内容...",
-      "bbox": [x1, y1, x2, y2],
-      "block_id": 1
-    },
-    {
-      "block_type": "display_formula",
-      "content": "x^2 + y^2 = r^2",
-      "bbox": [...],
-      "block_id": 2
-    }
-  ],
-  "options": ["A. 选项1", "B. 选项2"],
-  "has_formula": true,
-  "has_image": false,
-  "image_refs": []
-}
-```
-
-### 错题本Markdown格式
-
-```markdown
-# 错题本
-
-> 共收录 3 道题目
-
----
-
-## 1. 题目 1 (选择题)
-
-下列关于平行四边形的说法，正确的是（  ）
-
-A. 对边相等
-B. 对角相等
-...
-
-### 我的答案
-_（请在此处填写你的答案）_
-
-### 正确答案
-_（请在此处填写正确答案）_
-
-### 解析
-_（请在此处填写解题思路和知识点）_
-
----
-```
+| 文件 | 路径 | 格式 | 说明 |
+|------|------|------|------|
+| 标准化图片 | `output/pages/` | PNG | 输入文件转换后的标准化图片 |
+| OCR 解析结果 | `output/struct/` | JSON | PaddleOCR 返回的结构化数据 |
+| 图片资源 | `output/assets/` | JPG/PNG | OCR 结果中提取的图片 |
+| 题目数据 | `results/questions.json` | JSON | Agent 分割后的题目列表 |
+| 错题本 | `results/wrongbook.md` | Markdown | 最终导出的错题本 |
+| 问题日志 | `results/split_issues.jsonl` | JSONL | Agent 处理中记录的问题 |
 
 ## 常见问题
 
-### Q: Agent分割效果不好怎么办?
+### Q: 安装依赖时 `pdf2image` 报错?
+
+A: `pdf2image` 依赖系统级工具 `poppler`。请参照上方"系统依赖"部分安装对应系统的 poppler。
+
+### Q: Agent 分割效果不好怎么办?
 
 A: 可以调整以下方面:
-1. 修改 `prompts.py` 中的系统提示词
+1. 修改 `error_correction_agent/prompts.py` 中的系统提示词
 2. 增加示例题目（few-shot）
-3. 调整模型temperature（在 `agent.py` 中）
-4. 使用更强大的模型
+3. 调整模型 temperature（在 `agent.py` 中，当前为 0.1）
+4. 更换更强大的模型
 
-### Q: 如何查看Agent执行日志?
+### Q: 如何查看 Agent 执行日志?
 
-A: 如果启用了LangSmith追踪（`.env` 中设置 `LANGSMITH_TRACING=true`），可以在LangSmith控制台查看详细的执行轨迹。
+A: 在 `.env` 中设置 `LANGSMITH_TRACING=true` 并填写 `LANGSMITH_API_KEY`，然后访问 [LangSmith 控制台](https://smith.langchain.com) 查看详细的执行轨迹。
 
 ### Q: 支持哪些文件格式?
 
 A:
 - PDF: `.pdf`
 - 图片: `.jpg`, `.jpeg`, `.png`, `.bmp`, `.tiff`, `.webp`
+
+## 相关文档
+
+- [Web 应用使用指南](WEB_APP_GUIDE.md) — 详细的 Web 界面操作说明
+- [用户使用手册](docs/USER_GUIDE.md) — 完整的用户使用手册
+- [API 接口文档](docs/API.md) — REST API 接口详细说明
 
 ## 许可证
 
