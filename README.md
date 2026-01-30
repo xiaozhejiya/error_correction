@@ -72,7 +72,7 @@ START → prepare_input → ocr_parse → [中断] → split_questions → [中�
 
 ### 环境要求
 
-- **Python**: 3.8 或更高版本
+- **Python**: 3.11
 - **操作系统**: Windows / macOS / Linux
 - **外部服务**（需申请 API Key）:
   - [PaddleOCR API](https://www.paddlepaddle.org.cn/) — 文档 OCR 结构化解析
@@ -129,6 +129,7 @@ pip install -r requirements.txt
 |------|------|------|
 | Agent 框架 | `langchain`, `langgraph`, `deepagents` | LangChain 生态 + LangGraph 工作流 |
 | 模型适配 | `langchain-deepseek`, `langchain-openai` | DeepSeek / OpenAI 模型接口 |
+| 搜索工具 | `tavily`, `langchain-tavily` | Tavily 搜索 API |
 | Web 框架 | `flask`, `werkzeug` | HTTP API 和 Web 界面 |
 | 图像处理 | `pdf2image`, `Pillow`, `opencv-python` | PDF 转图片、图像操作 |
 | 工具库 | `python-dotenv`, `requests`, `pydantic`, `rich` | 环境配置、HTTP、数据验证、CLI 输出 |
@@ -136,42 +137,19 @@ pip install -r requirements.txt
 ### 步骤 4: 配置环境变量
 
 ```bash
-# 复制环境变量模板
 cp .env.example .env
 ```
 
-编辑 `.env` 文件，填写必需的 API 密钥：
+编辑 `.env` 文件，填写必需的 API 密钥（详细说明见 `.env.example` 注释）：
 
-```bash
-# ===== 必需配置 =====
-
-# DeepSeek API（用于 Agent 智能分割）
-DEEPSEEK_API_KEY=your_deepseek_api_key
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-
-# PaddleOCR API（用于文档 OCR 解析）
-PADDLEOCR_API_URL=https://your-paddleocr-api-url
-PADDLEOCR_API_TOKEN=your_paddleocr_token
-
-# ===== 可选配置 =====
-
-# LangSmith 追踪（调试用，可查看 Agent 执行轨迹）
-LANGSMITH_TRACING=true
-LANGSMITH_API_KEY=your_langsmith_key
-LANGSMITH_PROJECT=error-correction
-
-# PaddleOCR 功能开关
-PADDLEOCR_USE_DOC_ORIENTATION=false
-PADDLEOCR_USE_DOC_UNWARPING=false
-PADDLEOCR_USE_CHART_RECOGNITION=false
-
-# 输出目录（一般无需修改）
-OUTPUT_DIR=output
-PAGES_DIR=output/pages
-STRUCT_DIR=output/struct
-ASSETS_DIR=output/assets
-RESULTS_DIR=results
-```
+| 变量 | 必需 | 说明 |
+|------|------|------|
+| `DEEPSEEK_API_KEY` | 是 | DeepSeek API 密钥，用于 Agent 智能分割 |
+| `DEEPSEEK_BASE_URL` | 是 | DeepSeek API 地址 |
+| `PADDLEOCR_API_URL` | 是 | PaddleOCR API 地址 |
+| `PADDLEOCR_API_TOKEN` | 是 | PaddleOCR API 密钥 |
+| `LANGSMITH_API_KEY` | 否 | LangSmith 追踪密钥（调试用） |
+| `TAVILY_API_KEY` | 否 | Tavily 搜索 API 密钥 |
 
 ### 步骤 5: 验证安装
 
@@ -261,8 +239,6 @@ A:
 ## 相关文档
 
 - [Web 应用使用指南](WEB_APP_GUIDE.md) — 详细的 Web 界面操作说明
-- [用户使用手册](docs/USER_GUIDE.md) — 完整的用户使用手册
-- [API 接口文档](docs/API.md) — REST API 接口详细说明
 
 ## 许可证
 
