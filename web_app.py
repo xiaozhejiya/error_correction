@@ -4,13 +4,26 @@
 """
 
 import os
+import sys
+import io
 import json
+import uuid
 from pathlib import Path
+
+# 修复 Windows GBK 编码问题，使 rich 能输出 Unicode 字符
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 from flask import Flask, request, jsonify, render_template, send_from_directory
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 
-from src.workflow import ErrorCorrectionWorkflow
+import logging
+from src.workflow import ErrorCorrectionWorkflow, _is_remote_ocr_configured
+from src.local_ocr import recognize_image
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # 加载环境变量
 load_dotenv()
@@ -35,6 +48,20 @@ def allowed_file(filename):
     """检查文件扩展名是否允许"""
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def safe_filename(original_filename):
+    """安全处理文件名，支持中文文件名"""
+    name = secure_filename(original_filename)
+    # secure_filename 会把中文全部过滤掉，可能只剩扩展名
+    # 如果结果没有点号（即扩展名丢失）或名称为空，用UUID替代
+    if '.' not in name or name.startswith('.'):
+        # 从原始文件名提取扩展名
+        ext = ''
+        if '.' in original_filename:
+            ext = '.' + original_filename.rsplit('.', 1)[1].lower()
+        name = uuid.uuid4().hex[:12] + ext
+    return name
 
 
 @app.route('/')
@@ -64,8 +91,8 @@ def simple_upload():
         return jsonify({'error': '未选择文件'}), 400
 
     try:
-        # 保存文件
-        filename = secure_filename(file.filename)
+        # 保存文件（支持中文文件名）
+        filename = safe_filename(file.filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
 
@@ -106,16 +133,21 @@ def upload_file():
     try:
         global current_workflow
 
-        # 保存文件
-        filename = secure_filename(file.filename)
+        # 保存文件（支持中文文件名）
+        filename = safe_filename(file.filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
 
-        # 创建新的工作流实例
-        current_workflow = ErrorCorrectionWorkflow()
+        # 判断是否追加模式（多文件上传时第2个及之后的文件）
+        append_mode = request.args.get('append') == '1'
 
-        # 执行步骤1-2（准备和OCR）
-        result = current_workflow.run(filepath, auto_split=False)
+        if append_mode and current_workflow is not None:
+            # 追加模式：复用已有工作流，只处理新文件
+            result = current_workflow.run(filepath, auto_split=False)
+        else:
+            # 新建模式：创建新的工作流实例
+            current_workflow = ErrorCorrectionWorkflow()
+            result = current_workflow.run(filepath, auto_split=False)
 
         return jsonify({
             'success': True,
@@ -124,6 +156,7 @@ def upload_file():
                 'image_count': len(result['image_paths']),
                 'ocr_count': len(result['ocr_results']),
                 'image_paths': result['image_paths'],
+                'saved_filename': filename,
             }
         })
 
@@ -285,6 +318,30 @@ def download_file(filename):
     return send_from_directory(results_dir, filename, as_attachment=True)
 
 
+@app.route('/api/ocr/<filename>', methods=['POST'])
+def ocr_file(filename):
+    """对 uploads 目录中的图片进行本地 OCR 文字识别"""
+    try:
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        if not os.path.exists(filepath):
+            return jsonify({'success': False, 'error': f'文件不存在: {filename}'}), 404
+
+        image_exts = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.tif'}
+        ext = os.path.splitext(filename)[1].lower()
+        if ext not in image_exts:
+            return jsonify({'success': False, 'error': f'不支持的格式: {ext}'}), 400
+
+        logger.info(f"开始本地 OCR 识别: {filename}")
+        result = recognize_image(filepath)
+        logger.info(f"OCR 完成: {filename}, 成功: {result['success']}")
+
+        return jsonify(result)
+
+    except Exception as e:
+        logger.error(f"OCR 异常: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/status', methods=['GET'])
 def get_status():
     """
@@ -294,9 +351,10 @@ def get_status():
         JSON响应，包含系统配置和状态
     """
     try:
-        # 检查配置
+        remote_configured = _is_remote_ocr_configured()
         status = {
-            'paddleocr_configured': bool(os.getenv('PADDLEOCR_API_URL')),
+            'paddleocr_configured': True,  # 本地 OCR 始终可用
+            'paddleocr_mode': 'remote_api' if remote_configured else 'local',
             'deepseek_configured': bool(os.getenv('DEEPSEEK_API_KEY')),
             'langsmith_enabled': os.getenv('LANGSMITH_TRACING', 'false').lower() == 'true',
             'output_dirs': {

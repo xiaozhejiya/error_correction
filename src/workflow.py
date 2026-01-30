@@ -9,11 +9,18 @@ from pathlib import Path
 from dotenv import load_dotenv
 from rich.console import Console
 
-from .paddleocr_client import PaddleOCRClient
 from .utils import prepare_input, build_preview, export_wrongbook
 
 load_dotenv()
 console = Console()
+
+
+def _is_remote_ocr_configured():
+    """检查远程 PaddleOCR API 是否已配置"""
+    api_url = os.getenv("PADDLEOCR_API_URL", "")
+    api_token = os.getenv("PADDLEOCR_API_TOKEN", "")
+    return (api_url and api_url != "your_paddleocr_api_url_here" and
+            api_token and api_token != "your_paddleocr_api_token_here")
 
 
 class ErrorCorrectionWorkflow:
@@ -21,7 +28,16 @@ class ErrorCorrectionWorkflow:
 
     def __init__(self):
         """初始化工作流"""
-        self.paddleocr_client = PaddleOCRClient()
+        self.use_local_ocr = not _is_remote_ocr_configured()
+
+        if self.use_local_ocr:
+            console.print("[yellow]远程 PaddleOCR API 未配置，使用本地 PaddleOCR[/yellow]")
+            from .local_ocr import get_ocr_instance
+            self.local_ocr = get_ocr_instance()
+        else:
+            from .paddleocr_client import PaddleOCRClient
+            self.paddleocr_client = PaddleOCRClient()
+
         self.image_paths = []
         self.ocr_results = []
         self.questions = []
@@ -41,11 +57,13 @@ class ErrorCorrectionWorkflow:
 
         # 步骤1: 准备输入
         console.print("[bold yellow]步骤 1/5: 准备输入文件[/bold yellow]")
-        self.image_paths = prepare_input(input_file)
+        new_image_paths = prepare_input(input_file)
+        self.image_paths.extend(new_image_paths)
 
-        # 步骤2: PaddleOCR解析
+        # 步骤2: PaddleOCR解析（只解析新增的图片）
         console.print("\n[bold yellow]步骤 2/5: PaddleOCR解析[/bold yellow]")
-        self.ocr_results = self.paddleocr_parse(self.image_paths)
+        new_ocr_results = self.paddleocr_parse(new_image_paths)
+        self.ocr_results.extend(new_ocr_results)
 
         # 步骤3: 分割题目（需要Agent）
         console.print("\n[bold yellow]步骤 3/5: 分割题目（需要Agent）[/bold yellow]")
@@ -67,14 +85,15 @@ class ErrorCorrectionWorkflow:
             console.print("\n[yellow]题目尚未分割，跳过预览生成[/yellow]")
 
         return {
-            "image_paths": self.image_paths,
-            "ocr_results": self.ocr_results,
+            "image_paths": new_image_paths,
+            "ocr_results": new_ocr_results,
             "questions": self.questions,
         }
 
     def paddleocr_parse(self, image_paths: List[str]) -> List[Dict[str, Any]]:
         """
         步骤2: 调用PaddleOCR解析文档结构
+        支持远程API和本地PaddleOCR两种模式
 
         Args:
             image_paths: 图片路径列表
@@ -84,12 +103,41 @@ class ErrorCorrectionWorkflow:
         """
         results = []
 
-        for image_path in image_paths:
-            result = self.paddleocr_client.parse_image(
-                image_path,
-                save_output=True
-            )
-            results.append(result)
+        if self.use_local_ocr:
+            # 使用本地 PaddleOCR
+            from .local_ocr import recognize_image
+            for image_path in image_paths:
+                console.print(f"[cyan]本地 OCR 解析: {image_path}[/cyan]")
+                ocr_result = recognize_image(image_path)
+                if ocr_result["success"]:
+                    # 转换为与远程 API 兼容的格式
+                    result = {
+                        "layoutParsingResults": [{
+                            "prunedResult": {
+                                "parsing_res_list": [
+                                    {"block_type": "text", "content": t["text"]}
+                                    for t in ocr_result["texts"]
+                                ]
+                            },
+                            "block_order": list(range(len(ocr_result["texts"]))),
+                            "markdown": {
+                                "text": ocr_result["full_text"],
+                                "images": {}
+                            }
+                        }]
+                    }
+                    results.append(result)
+                else:
+                    console.print(f"[red]OCR 失败: {ocr_result['error']}[/red]")
+                    results.append({"layoutParsingResults": []})
+        else:
+            # 使用远程 PaddleOCR API
+            for image_path in image_paths:
+                result = self.paddleocr_client.parse_image(
+                    image_path,
+                    save_output=True
+                )
+                results.append(result)
 
         console.print(f"[green]✓ 成功解析 {len(results)} 张图片[/green]")
 

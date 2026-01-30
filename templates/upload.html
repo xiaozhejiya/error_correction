@@ -369,6 +369,64 @@
                 opacity: 1;
             }
         }
+
+        /* 题目卡片样式 */
+        .question-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .question-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+
+        .question-card.selected {
+            border-color: #667eea;
+            background: #f8f9ff;
+            box-shadow: 0 0 0 2px #667eea;
+        }
+
+        .question-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .question-id {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #667eea;
+            margin-right: 15px;
+        }
+
+        .question-type {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #4CAF50;
+            color: white;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+
+        .question-content {
+            color: #333;
+            line-height: 1.8;
+        }
+
+        .question-select-box {
+            margin-left: auto;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -398,6 +456,39 @@
         <button class="btn" id="uploadBtn" style="display: none;">开始上传</button>
 
         <div class="status-message" id="statusMessage"></div>
+
+        <!-- OCR 工作流按钮 -->
+        <div class="workflow-buttons" id="workflowButtons" style="display: none; margin: 20px 0; text-align: center;">
+            <button class="btn" id="ocrBtn" style="background: #2196F3; margin: 0 5px;">🔍 开始 OCR 识别</button>
+            <button class="btn" id="splitBtn" style="background: #FF9800; margin: 0 5px;" disabled>✂️ 分割题目</button>
+            <button class="btn" id="exportBtn" style="background: #4CAF50; margin: 0 5px;" disabled>📥 导出错题本</button>
+        </div>
+
+        <!-- OCR 结果信息 -->
+        <div class="ocr-result" id="ocrResult" style="display: none; background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="margin: 0 0 10px 0;">OCR 识别结果</h3>
+            <div style="display: flex; justify-content: space-around;">
+                <div>
+                    <strong>图片数量：</strong>
+                    <span id="imageCount">0</span>
+                </div>
+                <div>
+                    <strong>OCR 结果：</strong>
+                    <span id="ocrCount">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 题目预览区域 -->
+        <div class="questions-area" id="questionsArea" style="display: none; margin: 20px 0;">
+            <h3 style="margin-bottom: 15px;">题目预览</h3>
+            <div class="select-actions" style="margin-bottom: 15px;">
+                <button class="action-btn" onclick="selectAllQuestions()">全选题目</button>
+                <button class="action-btn" onclick="deselectAllQuestions()">取消全选</button>
+                <span id="questionSelectedCount" style="margin-left: 15px; color: #666;">已选择 0 道题目</span>
+            </div>
+            <div id="questionsList"></div>
+        </div>
 
         <div class="uploaded-files" id="uploadedFiles" style="display: none;">
             <h3>已上传文件</h3>
@@ -443,6 +534,20 @@
         const deselectAllBtn = document.getElementById('deselectAllBtn');
 
         let selectedFiles = new Set(); // 存储选中的文件索引
+
+        // OCR 工作流相关变量
+        let currentQuestions = [];
+        let selectedQuestions = new Set();
+        let lastUploadedFile = null;
+        let originalFileObject = null; // 保存原始文件对象用于OCR
+
+        // 获取新的DOM元素
+        const workflowButtons = document.getElementById('workflowButtons');
+        const ocrBtn = document.getElementById('ocrBtn');
+        const splitBtn = document.getElementById('splitBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const ocrResult = document.getElementById('ocrResult');
+        const questionsArea = document.getElementById('questionsArea');
 
         // 点击上传区域
         uploadArea.addEventListener('click', () => {
@@ -495,6 +600,9 @@
             const formData = new FormData();
             formData.append('file', file);
 
+            // 保存原始文件对象用于OCR
+            originalFileObject = file;
+
             progressContainer.style.display = 'block';
             uploadBtn.disabled = true;
 
@@ -514,6 +622,12 @@
                     const response = JSON.parse(xhr.responseText);
                     showStatus('success', `✅ 上传成功！文件已保存：${response.filename}`);
                     addToUploadedList(file.name, file.size, response.filename);
+                    lastUploadedFile = response.filename;
+
+                    // 显示 OCR 工作流按钮
+                    workflowButtons.style.display = 'block';
+                    ocrBtn.disabled = false;
+
                     resetUpload();
                 } else {
                     showStatus('error', '❌ 上传失败，请重试');
@@ -734,6 +848,232 @@
                 }
             }
         });
+
+        // ==================== OCR 工作流功能 ====================
+
+        // OCR 按钮点击
+        ocrBtn.addEventListener('click', async () => {
+            if (!originalFileObject) {
+                showStatus('error', '❌ 请先上传文件');
+                return;
+            }
+
+            showStatus('info', '⏳ 正在执行 OCR 识别，请稍候...');
+            ocrBtn.disabled = true;
+
+            try {
+                const formData = new FormData();
+                // 使用保存的原始文件对象
+                formData.append('file', originalFileObject);
+
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus('success', `✅ OCR 识别成功！识别到 ${data.result.image_count} 张图片`);
+
+                    // 显示OCR结果
+                    document.getElementById('imageCount').textContent = data.result.image_count;
+                    document.getElementById('ocrCount').textContent = data.result.ocr_count;
+                    ocrResult.style.display = 'block';
+
+                    // 启用分割按钮
+                    splitBtn.disabled = false;
+                } else {
+                    showStatus('error', '❌ OCR 识别失败: ' + (data.error || '未知错误'));
+                    ocrBtn.disabled = false;
+                }
+            } catch (error) {
+                showStatus('error', '❌ OCR 识别失败: ' + error.message);
+                ocrBtn.disabled = false;
+            }
+        });
+
+        // 分割按钮点击
+        splitBtn.addEventListener('click', async () => {
+            showStatus('info', '⏳ 正在分割题目，请稍候...');
+            splitBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/split', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentQuestions = data.questions;
+                    showStatus('success', `✅ 成功分割 ${data.questions.length} 道题目`);
+                    displayQuestions(data.questions);
+
+                    // 启用导出按钮
+                    exportBtn.disabled = false;
+                } else {
+                    showStatus('error', '❌ 题目分割失败: ' + (data.error || '未知错误'));
+                    splitBtn.disabled = false;
+                }
+            } catch (error) {
+                showStatus('error', '❌ 题目分割失败: ' + error.message);
+                splitBtn.disabled = false;
+            }
+        });
+
+        // 导出按钮点击
+        exportBtn.addEventListener('click', async () => {
+            if (selectedQuestions.size === 0) {
+                showStatus('warning', '⚠️ 请至少选择一道题目！');
+                return;
+            }
+
+            showStatus('info', '⏳ 正在导出错题本，请稍候...');
+            exportBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/export', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        selected_ids: Array.from(selectedQuestions)
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus('success', `✅ 错题本导出成功！已保存到: ${data.output_path}`);
+
+                    // 提供下载链接
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = '/download/wrongbook.md';
+                    downloadLink.download = 'wrongbook.md';
+                    downloadLink.textContent = '点击下载错题本';
+                    downloadLink.style.cssText = 'color: #667eea; font-weight: bold; text-decoration: none; margin-left: 10px;';
+
+                    statusMessage.appendChild(document.createElement('br'));
+                    statusMessage.appendChild(downloadLink);
+                } else {
+                    showStatus('error', '❌ 导出失败: ' + (data.error || '未知错误'));
+                }
+
+                exportBtn.disabled = false;
+            } catch (error) {
+                showStatus('error', '❌ 导出失败: ' + error.message);
+                exportBtn.disabled = false;
+            }
+        });
+
+        // 显示题目列表
+        function displayQuestions(questions) {
+            questionsArea.style.display = 'block';
+            const questionsList = document.getElementById('questionsList');
+            questionsList.innerHTML = '';
+
+            questions.forEach(q => {
+                const card = document.createElement('div');
+                card.className = 'question-card';
+                card.setAttribute('data-id', q.question_id);
+
+                card.innerHTML = `
+                    <div class="question-header">
+                        <span class="question-id">题目 ${q.question_id}</span>
+                        <span class="question-type">${q.question_type || '未知类型'}</span>
+                        <input type="checkbox" class="question-select-box" data-id="${q.question_id}">
+                    </div>
+                    <div class="question-content">
+                        ${formatQuestionContent(q)}
+                    </div>
+                `;
+
+                const checkbox = card.querySelector('.question-select-box');
+
+                // 点击卡片切换选中状态
+                card.addEventListener('click', (e) => {
+                    if (e.target.type === 'checkbox') return;
+                    checkbox.checked = !checkbox.checked;
+                    checkbox.dispatchEvent(new Event('change'));
+                });
+
+                // checkbox 变化时更新状态和样式
+                checkbox.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        selectedQuestions.add(q.question_id);
+                        card.classList.add('selected');
+                    } else {
+                        selectedQuestions.delete(q.question_id);
+                        card.classList.remove('selected');
+                    }
+                    updateQuestionSelectedCount();
+                });
+
+                questionsList.appendChild(card);
+            });
+        }
+
+        // 格式化题目内容
+        function formatQuestionContent(question) {
+            let html = '';
+
+            if (question.content_blocks && question.content_blocks.length > 0) {
+                question.content_blocks.forEach(block => {
+                    if (block.block_type === 'text') {
+                        html += `<p>${block.content}</p>`;
+                    } else if (block.block_type === 'display_formula') {
+                        html += `<div style="background: #f0f0f0; padding: 10px; margin: 10px 0; font-family: monospace;">${block.content}</div>`;
+                    } else if (block.block_type === 'image') {
+                        html += `<p style="color: #ff9800;">📷 图片: ${block.content || '图片资源'}</p>`;
+                    }
+                });
+            }
+
+            if (question.options && question.options.length > 0) {
+                html += '<div style="margin-top: 10px;">';
+                question.options.forEach(option => {
+                    html += `<div style="margin: 5px 0;">${option}</div>`;
+                });
+                html += '</div>';
+            }
+
+            return html || '<p style="color: #999;">（内容为空）</p>';
+        }
+
+        // 全选题目
+        function selectAllQuestions() {
+            document.querySelectorAll('.question-card').forEach(card => {
+                const checkbox = card.querySelector('.question-select-box');
+                if (!checkbox.checked) {
+                    checkbox.checked = true;
+                    checkbox.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+
+        // 取消全选题目
+        function deselectAllQuestions() {
+            document.querySelectorAll('.question-card').forEach(card => {
+                const checkbox = card.querySelector('.question-select-box');
+                if (checkbox.checked) {
+                    checkbox.checked = false;
+                    checkbox.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+
+        // 更新题目选中数量
+        function updateQuestionSelectedCount() {
+            const countEl = document.getElementById('questionSelectedCount');
+            if (countEl) {
+                countEl.textContent = `已选择 ${selectedQuestions.size} 道题目`;
+            }
+        }
     </script>
 </body>
 </html>

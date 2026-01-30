@@ -382,6 +382,105 @@
             background: #f8d7da;
             color: #721c24;
         }
+
+        /* === 进度条 === */
+        .progress-container {
+            display: none;
+            margin: 15px 0;
+        }
+        .progress-bar-wrapper {
+            background: #e0e0e0;
+            height: 24px;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            line-height: 24px;
+            color: white;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        /* === 图片缩略图预览 === */
+        .image-preview-area {
+            display: none;
+            margin: 15px 0;
+        }
+        .image-preview-area h4 { color: #333; margin-bottom: 10px; }
+        .preview-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .preview-thumb {
+            width: 80px; height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .preview-thumb:hover {
+            border-color: #667eea;
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(102,126,234,0.3);
+        }
+
+        /* === 图片放大模态框 === */
+        .img-modal {
+            display: none; position: fixed; z-index: 10000;
+            left: 0; top: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            justify-content: center; align-items: center;
+        }
+        .img-modal.active { display: flex; }
+        .img-modal img { max-width: 90%; max-height: 90%; border-radius: 8px; }
+        .img-modal-close {
+            position: absolute; top: 20px; right: 30px;
+            color: white; font-size: 40px; cursor: pointer;
+            background: rgba(255,255,255,0.1); border-radius: 50%;
+            width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
+        }
+        .img-modal-close:hover { background: rgba(255,255,255,0.2); }
+
+        /* === OCR 结果面板 === */
+        .ocr-panel {
+            display: none;
+            background: #f0f8ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        .ocr-panel.active { display: block; }
+        .ocr-panel-header {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+        }
+        .ocr-panel-header h4 { margin: 0; color: #333; }
+        .ocr-text {
+            background: white; border: 1px solid #ddd; border-radius: 8px;
+            padding: 15px; white-space: pre-wrap; word-break: break-all;
+            font-size: 14px; line-height: 1.6; max-height: 250px; overflow-y: auto;
+        }
+        .ocr-meta { margin-top: 8px; font-size: 12px; color: #888; }
+        .ocr-copy-btn {
+            background: #667eea; color: white; border: none; padding: 5px 12px;
+            border-radius: 6px; cursor: pointer; font-size: 12px;
+        }
+        .ocr-copy-btn:hover { background: #764ba2; }
+        .ocr-close-btn {
+            background: none; border: none; font-size: 20px; cursor: pointer; color: #999;
+        }
     </style>
 </head>
 <body>
@@ -423,7 +522,34 @@
                 <div class="upload-icon">📄</div>
                 <div class="upload-text">点击或拖拽文件到这里</div>
                 <div class="upload-hint">支持 PDF、PNG、JPG 等格式（最大 50MB）</div>
-                <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.bmp,.tiff,.webp">
+                <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.bmp,.tiff,.webp" multiple>
+            </div>
+
+            <!-- 上传进度条 -->
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar-wrapper">
+                    <div class="progress-bar" id="progressBar"></div>
+                    <div class="progress-text" id="progressText">0%</div>
+                </div>
+            </div>
+
+            <!-- 图片缩略图预览 -->
+            <div class="image-preview-area" id="imagePreviewArea">
+                <h4>上传图片预览</h4>
+                <div class="preview-grid" id="previewGrid"></div>
+            </div>
+
+            <!-- OCR 识别结果面板 -->
+            <div class="ocr-panel" id="ocrPanel">
+                <div class="ocr-panel-header">
+                    <h4 id="ocrTitle">OCR 识别结果</h4>
+                    <div>
+                        <button class="ocr-copy-btn" id="ocrCopyBtn">复制文字</button>
+                        <button class="ocr-close-btn" id="ocrCloseBtn">&times;</button>
+                    </div>
+                </div>
+                <div class="ocr-text" id="ocrText"></div>
+                <div class="ocr-meta" id="ocrMeta"></div>
             </div>
 
             <!-- 文件信息 -->
@@ -461,6 +587,12 @@
             <!-- 题目预览 -->
             <div class="questions-preview" id="questionsPreview"></div>
         </div>
+    </div>
+
+    <!-- 图片放大模态框 -->
+    <div class="img-modal" id="imgModal">
+        <span class="img-modal-close" id="imgModalClose">&times;</span>
+        <img id="imgModalImg">
     </div>
 
     <script>
@@ -518,52 +650,196 @@
         uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
             uploadArea.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file) handleFileUpload(file);
+            const files = Array.from(e.dataTransfer.files);
+            if (files.length > 0) handleMultipleFiles(files);
         });
 
         fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) handleFileUpload(file);
+            const files = Array.from(e.target.files);
+            if (files.length > 0) handleMultipleFiles(files);
         });
 
-        // 处理文件上传
-        async function handleFileUpload(file) {
+        // 累计结果
+        let totalImageCount = 0;
+        let totalOcrCount = 0;
+        let uploadedFileNames = [];
+
+        // 处理多文件上传
+        function handleMultipleFiles(files) {
+            const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff'];
+
+            // 重置累计
+            totalImageCount = 0;
+            totalOcrCount = 0;
+            uploadedFileNames = [];
+            ocrResultCount = 0;
+            ocrTotalTexts = 0;
+            ocrTotalConfidence = 0;
+            document.getElementById('ocrPanel').classList.remove('active');
+            document.getElementById('ocrText').textContent = '';
+
+            // 清空预览区
+            const previewArea = document.getElementById('imagePreviewArea');
+            const previewGrid = document.getElementById('previewGrid');
+            previewGrid.innerHTML = '';
+            previewArea.style.display = 'block';
+
+            // 为每个文件添加缩略图预览
+            files.forEach(file => {
+                const ext = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+                if (imageExts.includes(ext)) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.className = 'preview-thumb';
+                        img.title = file.name + ' - 点击查看大图';
+                        img.addEventListener('click', () => {
+                            document.getElementById('imgModalImg').src = e.target.result;
+                            document.getElementById('imgModal').classList.add('active');
+                        });
+                        previewGrid.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            setStep(2);
+
+            // 显示进度条
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+            progressText.textContent = `0/${files.length} 文件`;
+
+            // 逐个上传文件
+            uploadFilesSequentially(files, 0, progressBar, progressText, progressContainer);
+        }
+
+        // 逐个上传文件（串行，避免并发冲突）
+        function uploadFilesSequentially(files, index, progressBar, progressText, progressContainer) {
+            if (index >= files.length) {
+                // 全部上传完成
+                progressContainer.style.display = 'none';
+                showSuccess(`全部上传完成！共 ${files.length} 个文件，识别到 ${totalImageCount} 张图片`);
+                document.getElementById('fileName').textContent = uploadedFileNames.join(', ');
+                document.getElementById('imageCount').textContent = totalImageCount;
+                document.getElementById('ocrCount').textContent = totalOcrCount;
+                document.getElementById('fileInfo').style.display = 'block';
+                document.getElementById('splitBtn').disabled = false;
+                setStep(3);
+                return;
+            }
+
+            const file = files[index];
             const formData = new FormData();
             formData.append('file', file);
 
-            // 显示加载状态
-            showLoading('正在上传和处理文件...');
-            setStep(2);
+            // 判断是追加还是首个文件
+            const isFirst = (index === 0);
+            const uploadUrl = isFirst ? '/api/upload' : '/api/upload?append=1';
 
-            try {
-                const response = await fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData
-                });
+            progressText.textContent = `${index + 1}/${files.length} - ${file.name}`;
+            const baseProgress = (index / files.length) * 100;
+            const stepProgress = (1 / files.length) * 100;
 
-                const data = await response.json();
+            const xhr = new XMLHttpRequest();
 
-                if (data.success) {
-                    // 显示成功信息
-                    showSuccess(`文件处理成功！识别到 ${data.result.image_count} 张图片`);
-
-                    // 更新文件信息
-                    document.getElementById('fileName').textContent = file.name;
-                    document.getElementById('imageCount').textContent = data.result.image_count;
-                    document.getElementById('ocrCount').textContent = data.result.ocr_count;
-                    document.getElementById('fileInfo').style.display = 'block';
-
-                    // 启用分割按钮
-                    document.getElementById('splitBtn').disabled = false;
-
-                    setStep(3);
-                } else {
-                    showError(data.error || '文件处理失败');
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const filePct = (e.loaded / e.total);
+                    const totalPct = Math.round(baseProgress + filePct * stepProgress);
+                    progressBar.style.width = totalPct + '%';
                 }
-            } catch (error) {
-                showError('上传失败: ' + error.message);
-            }
+            });
+
+            xhr.addEventListener('load', () => {
+                if (xhr.status === 200) {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.success) {
+                        totalImageCount += data.result.image_count;
+                        totalOcrCount += data.result.ocr_count;
+                        uploadedFileNames.push(file.name);
+
+                        // 自动 OCR 文字识别（使用服务器保存的文件名）
+                        const savedName = data.result.saved_filename || file.name;
+                        const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff'];
+                        const ext = savedName.toLowerCase().substring(savedName.lastIndexOf('.'));
+                        if (imageExts.includes(ext)) {
+                            performLocalOCR(savedName);
+                        }
+
+                        // 继续上传下一个
+                        uploadFilesSequentially(files, index + 1, progressBar, progressText, progressContainer);
+                    } else {
+                        showError(`${file.name}: ${data.error || '处理失败'}`);
+                        // 继续上传下一个（跳过失败的）
+                        uploadFilesSequentially(files, index + 1, progressBar, progressText, progressContainer);
+                    }
+                } else {
+                    try {
+                        const errData = JSON.parse(xhr.responseText);
+                        showError(`${file.name}: ${errData.error || '上传失败'}`);
+                    } catch(e) {
+                        showError(`${file.name}: 上传失败 HTTP ${xhr.status}`);
+                    }
+                    uploadFilesSequentially(files, index + 1, progressBar, progressText, progressContainer);
+                }
+            });
+
+            xhr.addEventListener('error', () => {
+                showError(`${file.name}: 网络错误`);
+                uploadFilesSequentially(files, index + 1, progressBar, progressText, progressContainer);
+            });
+
+            xhr.open('POST', uploadUrl);
+            xhr.send(formData);
+        }
+
+        // 本地 OCR 文字识别（支持多文件追加）
+        let ocrResultCount = 0;
+        let ocrTotalTexts = 0;
+        let ocrTotalConfidence = 0;
+
+        function performLocalOCR(filename) {
+            fetch(`/api/ocr/${encodeURIComponent(filename)}`, { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    const panel = document.getElementById('ocrPanel');
+                    const title = document.getElementById('ocrTitle');
+                    const text = document.getElementById('ocrText');
+                    const meta = document.getElementById('ocrMeta');
+
+                    if (data.success && data.full_text) {
+                        ocrResultCount++;
+                        const count = data.texts ? data.texts.length : 0;
+                        ocrTotalTexts += count;
+                        if (count > 0) {
+                            ocrTotalConfidence += data.texts.reduce((s, t) => s + t.confidence, 0);
+                        }
+                        const avg = ocrTotalTexts > 0 ? (ocrTotalConfidence / ocrTotalTexts * 100).toFixed(1) : 0;
+
+                        // 多文件时追加内容
+                        if (ocrResultCount === 1) {
+                            title.textContent = `OCR 识别结果 - ${filename}`;
+                            text.textContent = data.full_text;
+                        } else {
+                            title.textContent = `OCR 识别结果 (${ocrResultCount} 个文件)`;
+                            text.textContent += '\n\n--- ' + filename + ' ---\n' + data.full_text;
+                        }
+                        meta.textContent = `共识别 ${ocrTotalTexts} 个文本区域，平均置信度 ${avg}%`;
+                    } else if (ocrResultCount === 0) {
+                        title.textContent = 'OCR 识别结果';
+                        text.textContent = data.full_text || '(未检测到文字)';
+                        meta.textContent = '';
+                    }
+                    panel.classList.add('active');
+                })
+                .catch(err => {
+                    console.error('OCR 失败:', err);
+                });
         }
 
         // 分割题目
@@ -797,6 +1073,37 @@
                 }
             }
         }
+
+        // === 图片模态框 ===
+        document.getElementById('imgModalClose').addEventListener('click', () => {
+            document.getElementById('imgModal').classList.remove('active');
+        });
+        document.getElementById('imgModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('imgModal')) {
+                document.getElementById('imgModal').classList.remove('active');
+            }
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') document.getElementById('imgModal').classList.remove('active');
+            // Ctrl+A 全选题目
+            if ((e.ctrlKey || e.metaKey) && e.key === 'a' && currentQuestions.length > 0) {
+                e.preventDefault();
+                selectAll();
+            }
+        });
+
+        // === OCR 面板按钮 ===
+        document.getElementById('ocrCopyBtn').addEventListener('click', () => {
+            const text = document.getElementById('ocrText').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.getElementById('ocrCopyBtn');
+                btn.textContent = '已复制!';
+                setTimeout(() => { btn.textContent = '复制文字'; }, 2000);
+            });
+        });
+        document.getElementById('ocrCloseBtn').addEventListener('click', () => {
+            document.getElementById('ocrPanel').classList.remove('active');
+        });
 
         // 页面加载时检查系统状态
         window.addEventListener('load', checkSystemStatus);
