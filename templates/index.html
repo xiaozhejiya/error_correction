@@ -61,6 +61,14 @@
                 <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.bmp,.tiff,.webp">
             </div>
 
+            <!-- 上传进度条 -->
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="progressBarFill"></div>
+                </div>
+                <div class="progress-text" id="progressText">0%</div>
+            </div>
+
             <!-- 文件信息 -->
             <div class="file-info" id="fileInfo">
                 <div class="file-info-item">
@@ -96,6 +104,11 @@
             <!-- 题目预览 -->
             <div class="questions-preview" id="questionsPreview"></div>
         </div>
+    </div>
+
+    <!-- 图片预览模态框 -->
+    <div class="img-modal" id="imgModal">
+        <img id="imgModalContent" src="" alt="预览">
     </div>
 
     <script>
@@ -162,43 +175,65 @@
             if (file) handleFileUpload(file);
         });
 
-        // 处理文件上传
-        async function handleFileUpload(file) {
+        // 处理文件上传（带进度条）
+        function handleFileUpload(file) {
             const formData = new FormData();
             formData.append('file', file);
 
-            // 显示加载状态
-            showLoading('正在上传和处理文件...');
             setStep(2);
 
-            try {
-                const response = await fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData
-                });
+            // 显示进度条
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBarFill = document.getElementById('progressBarFill');
+            const progressText = document.getElementById('progressText');
+            progressContainer.style.display = 'block';
+            progressBarFill.style.width = '0%';
+            progressText.textContent = '0%';
 
-                const data = await response.json();
+            const xhr = new XMLHttpRequest();
 
-                if (data.success) {
-                    // 显示成功信息
-                    showSuccess(`文件处理成功！识别到 ${data.result.image_count} 张图片`);
-
-                    // 更新文件信息
-                    document.getElementById('fileName').textContent = file.name;
-                    document.getElementById('imageCount').textContent = data.result.image_count;
-                    document.getElementById('ocrCount').textContent = data.result.ocr_count;
-                    document.getElementById('fileInfo').style.display = 'block';
-
-                    // 启用分割按钮
-                    document.getElementById('splitBtn').disabled = false;
-
-                    setStep(3);
-                } else {
-                    showError(data.error || '文件处理失败');
+            // 上传进度
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    progressBarFill.style.width = percent + '%';
+                    progressText.textContent = percent + '%';
                 }
-            } catch (error) {
-                showError('上传失败: ' + error.message);
-            }
+            });
+
+            // 上传完成后服务端处理
+            xhr.upload.addEventListener('load', () => {
+                progressBarFill.style.width = '100%';
+                progressText.textContent = '上传完成，正在处理...';
+            });
+
+            xhr.addEventListener('load', () => {
+                progressContainer.style.display = 'none';
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.success) {
+                        showSuccess(`文件处理成功！识别到 ${data.result.image_count} 张图片`);
+                        document.getElementById('fileName').textContent = file.name;
+                        document.getElementById('imageCount').textContent = data.result.image_count;
+                        document.getElementById('ocrCount').textContent = data.result.ocr_count;
+                        document.getElementById('fileInfo').style.display = 'block';
+                        document.getElementById('splitBtn').disabled = false;
+                        setStep(3);
+                    } else {
+                        showError(data.error || '文件处理失败');
+                    }
+                } catch (e) {
+                    showError('解析响应失败');
+                }
+            });
+
+            xhr.addEventListener('error', () => {
+                progressContainer.style.display = 'none';
+                showError('上传失败，请检查网络连接');
+            });
+
+            xhr.open('POST', '/api/upload');
+            xhr.send(formData);
         }
 
         // 分割题目
@@ -376,7 +411,7 @@
                     } else if (block.block_type === 'image') {
                         const imgPath = block.content || '';
                         if (imgPath) {
-                            html += `<img src="${imgPath}" style="max-width: 100%; margin: 10px 0;">`;
+                            html += `<img src="${imgPath}" style="max-width: 100%; margin: 10px 0;" onclick="showImagePreview(this.src)">`;
                         } else {
                             html += `<p style="color: #ff9800;">📷 图片资源</p>`;
                         }
@@ -440,6 +475,30 @@
                 }
             }
         }
+
+        // 图片预览功能
+        function showImagePreview(src) {
+            const modal = document.getElementById('imgModal');
+            document.getElementById('imgModalContent').src = src;
+            modal.classList.add('active');
+        }
+
+        document.getElementById('imgModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('imgModal')) {
+                document.getElementById('imgModal').classList.remove('active');
+            }
+        });
+
+        // 键盘快捷键
+        document.addEventListener('keydown', (e) => {
+            // ESC 关闭图片预览
+            if (e.key === 'Escape') document.getElementById('imgModal').classList.remove('active');
+            // Ctrl+A 全选题目
+            if ((e.ctrlKey || e.metaKey) && e.key === 'a' && currentQuestions.length > 0) {
+                e.preventDefault();
+                selectAll();
+            }
+        });
 
         // 页面加载时检查系统状态
         window.addEventListener('load', checkSystemStatus);
