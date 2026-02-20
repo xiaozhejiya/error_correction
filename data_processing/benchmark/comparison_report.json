@@ -1,0 +1,152 @@
+{
+  "timestamp": "2026-02-21T01:16:58.048478",
+  "results": [
+    {
+      "filename": "test0.jpg",
+      "raw": {
+        "size": "794x1044",
+        "tokens_estimated": 1230,
+        "metrics": {
+          "total_lines": 34,
+          "character_count": 946,
+          "quality_score": 97.3
+        }
+      },
+      "enhanced": {
+        "size": "2607x3879",
+        "tokens_estimated": 1408,
+        "metrics": {
+          "total_lines": 35,
+          "character_count": 1044,
+          "quality_score": 100.0
+        },
+        "metadata": {
+          "dpi_enhancement": {
+            "original_dpi": 72,
+            "target_dpi": 300,
+            "success": true
+          },
+          "skew_correction": null,
+          "cropped": true
+        }
+      },
+      "comparison": {
+        "quality_score_improvement": 2.700000000000003,
+        "token_saved_absolute": -178,
+        "token_saving_ratio_percent": -14.471544715447154,
+        "summary": "质量提升 2.7; Token 节省 -14.5%"
+      }
+    },
+    {
+      "filename": "test1.jpg",
+      "raw": {
+        "size": "3211x2271",
+        "tokens_estimated": 1408,
+        "metrics": {
+          "total_lines": 16,
+          "character_count": 1216,
+          "quality_score": 100.0
+        }
+      },
+      "enhanced": {
+        "size": "4649x3526",
+        "tokens_estimated": 1408,
+        "metrics": {
+          "total_lines": 15,
+          "character_count": 1057,
+          "quality_score": 100.0
+        },
+        "metadata": {
+          "dpi_enhancement": {
+            "original_dpi": 72,
+            "target_dpi": 300,
+            "success": true
+          },
+          "skew_correction": null,
+          "cropped": true
+        }
+      },
+      "comparison": {
+        "quality_score_improvement": 0.0,
+        "token_saved_absolute": 0,
+        "token_saving_ratio_percent": 0.0,
+        "summary": "质量提升 0.0; Token 节省 0.0%"
+      }
+    },
+    {
+      "filename": "test1_enhanced.png",
+      "raw": {
+        "size": "5000x3536",
+        "tokens_estimated": 1408,
+        "metrics": {
+          "total_lines": 17,
+          "character_count": 1083,
+          "quality_score": 100.0
+        }
+      },
+      "enhanced": {
+        "size": "4649x3525",
+        "tokens_estimated": 1408,
+        "metrics": {
+          "total_lines": 17,
+          "character_count": 1097,
+          "quality_score": 100.0
+        },
+        "metadata": {
+          "dpi_enhancement": {
+            "original_dpi": 299,
+            "target_dpi": 300,
+            "success": true
+          },
+          "skew_correction": null,
+          "cropped": true
+        }
+      },
+      "comparison": {
+        "quality_score_improvement": 0.0,
+        "token_saved_absolute": 0,
+        "token_saving_ratio_percent": 0.0,
+        "summary": "质量提升 0.0; Token 节省 0.0%"
+      }
+    },
+    {
+      "filename": "test2.png",
+      "raw": {
+        "size": "1389x1239",
+        "tokens_estimated": 1408,
+        "metrics": {
+          "total_lines": 53,
+          "character_count": 9160,
+          "quality_score": 100.0
+        }
+      },
+      "enhanced": {
+        "size": "5325x3390",
+        "tokens_estimated": 1408,
+        "metrics": {
+          "total_lines": 75,
+          "character_count": 3515,
+          "quality_score": 100.0
+        },
+        "metadata": {
+          "dpi_enhancement": {
+            "original_dpi": 72,
+            "target_dpi": 300,
+            "success": true
+          },
+          "skew_correction": {
+            "angle": 29.999999999999993,
+            "corrected": true
+          },
+          "cropped": true
+        }
+      },
+      "comparison": {
+        "quality_score_improvement": 0.0,
+        "token_saved_absolute": 0,
+        "token_saving_ratio_percent": 0.0,
+        "summary": "质量提升 0.0; Token 节省 0.0%"
+      }
+    }
+  ]
+}
