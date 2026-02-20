@@ -48,3 +48,21 @@ class CorrectedQuestion(BaseModel):
 class CorrectionResult(BaseModel):
     """纠错结果"""
     corrected_questions: List[CorrectedQuestion] = Field(description="纠错后的题目列表")
+
+
+class CorrectedQuestion(BaseModel):
+    """纠错后的单道题目"""
+    question_id: str = Field(description="题号")
+    question_type: Literal["选择题", "填空题", "解答题", "判断题"] = Field(description="题目类型")
+    content_blocks: List[ContentBlock] = Field(description="纠错后的题干内容块列表")
+    options: Optional[List[str]] = Field(default=None, description="纠错后的选项列表")
+    has_formula: bool = Field(default=False, description="是否包含数学公式")
+    has_image: bool = Field(default=False, description="是否包含图片")
+    image_refs: Optional[List[str]] = Field(default=None, description="图片引用路径列表")
+    knowledge_tags: Optional[List[str]] = Field(default=None, description="知识点标签列表")
+    corrections_applied: List[str] = Field(description="已应用的纠错操作列表，如 ['修复断裂公式', '替换乱码字符']")
+
+
+class CorrectionResult(BaseModel):
+    """纠错结果"""
+    corrected_questions: List[CorrectedQuestion] = Field(description="纠错后的题目列表")
