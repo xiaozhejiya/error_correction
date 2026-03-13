@@ -1042,6 +1042,8 @@ def save_to_db():
 
     except Exception as e:
         logger.exception("导入错题库失败")
+        if 'readonly database' in str(e).lower():
+            return jsonify({'success': False, 'error': '数据库文件为只读，请检查文件权限（error_book.db）'}), 500
         return jsonify({'success': False, 'error': '导入错题库失败，请稍后重试'}), 500
 
 
