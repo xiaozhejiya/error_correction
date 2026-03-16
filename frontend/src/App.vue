@@ -462,8 +462,26 @@ const doReset = () => {
   pushToast('success', '已重置')
 }
 
-const loadFromHistory = (loadedQuestions) => {
-  if (questions.value.length && !window.confirm('当前工作区已有题目，加载历史记录将替换现有内容。是否继续？')) return
+// ---- 确认弹窗（替代 window.confirm） ----
+const confirmOpen = ref(false)
+const confirmMsg = ref('')
+let confirmResolve = null
+const showConfirm = (msg) => new Promise((resolve) => {
+  confirmMsg.value = msg
+  confirmOpen.value = true
+  confirmResolve = resolve
+})
+const onConfirm = (yes) => {
+  confirmOpen.value = false
+  confirmResolve?.(yes)
+  confirmResolve = null
+}
+
+const loadFromHistory = async (loadedQuestions) => {
+  if (questions.value.length) {
+    const ok = await showConfirm('当前工作区已有题目，加载历史记录将替换现有内容。是否继续？')
+    if (!ok) return
+  }
   historyOpen.value = false
   clearWorkspaceState()
   splitCompleted.value = true
@@ -714,6 +732,39 @@ onBeforeUnmount(() => {
       />
       <ToastContainer :toasts="toasts" />
       <SplitHistory :open="historyOpen" @close="historyOpen = false" @load-record="loadFromHistory" />
+
+      <!-- 通用确认弹窗 -->
+      <Transition
+        enter-active-class="transition duration-200 ease-out"
+        leave-active-class="transition duration-150 ease-in"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
+      >
+        <div v-if="confirmOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm dark:bg-black/60" @click="onConfirm(false)"></div>
+          <div class="relative w-full max-w-sm rounded-2xl border border-slate-200/60 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
+            <div class="mb-4 flex items-start gap-3">
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-500 dark:bg-amber-500/10">
+                <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-slate-900 dark:text-white">操作确认</h3>
+                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ confirmMsg }}</p>
+              </div>
+            </div>
+            <div class="flex justify-end gap-3">
+              <button @click="onConfirm(false)" class="rounded-xl border border-slate-200/60 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700">
+                取消
+              </button>
+              <button @click="onConfirm(true)" class="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-blue-700 dark:bg-indigo-500 dark:hover:bg-indigo-600">
+                确认
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
 
       <!-- 答案录入弹窗（AI 辅导前置） -->
       <div v-if="answerModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
