@@ -14,6 +14,7 @@ import Dashboard from './components/Dashboard.vue'
 import CatLoading from './components/CatLoading.vue'
 import ErrorBank from './components/ErrorBank.vue'
 import ChatView from './components/ChatView.vue'
+import SplitHistory from './components/SplitHistory.vue'
 
 // ---- 视图路由控制 ----
 const currentView = ref('workspace') // 'workspace' | 'dashboard' | 'error-bank' | 'chat'
@@ -212,6 +213,7 @@ let activeXhr = null
 let fakeProgressTimer = null
 let fakeProgressKeys = []
 
+const historyOpen = ref(false)
 const splitEnabled = computed(() => !splitting.value && !splitCompleted.value && uploadReady.value && !uploadBusy.value)
 const exportEnabled = computed(() => splitCompleted.value && selectedIds.size > 0)
 
@@ -439,21 +441,36 @@ const doSaveToDb = async () => {
   }
 }
 
-const doReset = () => {
+const clearWorkspaceState = () => {
   uploadBusy.value = false
   uploadReady.value = false
   splitting.value = false
-  splitCompleted.value = false
   pendingFiles.splice(0, pendingFiles.length)
   for (const k of Object.keys(fileProgress)) delete fileProgress[k]
   waitingKeys.clear()
   uploadQueue.splice(0, uploadQueue.length)
   questions.value = []
   selectedIds.clear()
+}
+
+const doReset = () => {
+  clearWorkspaceState()
+  splitCompleted.value = false
   const configured = providerOptions.value.find(m => m.configured)
   modelProvider.value = configured ? configured.value : 'deepseek'
   step.value = 1
   pushToast('success', '已重置')
+}
+
+const loadFromHistory = (loadedQuestions) => {
+  if (questions.value.length && !window.confirm('当前工作区已有题目，加载历史记录将替换现有内容。是否继续？')) return
+  historyOpen.value = false
+  clearWorkspaceState()
+  splitCompleted.value = true
+  questions.value = loadedQuestions
+  step.value = 4
+  pushToast('success', `已加载 ${loadedQuestions.length} 道历史题目`)
+  typesetMath()
 }
 
 // ---- 生命周期 ----
@@ -581,11 +598,20 @@ onBeforeUnmount(() => {
 
         <div class="container relative z-10 mx-auto max-w-5xl px-4 py-8 sm:px-8">
           <!-- 工作台页面标题 -->
-          <div class="mb-8 pl-2 sm:pl-0">
-            <h2 class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl dark:text-white">
-              智能录入与分析
-            </h2>
-            <p class="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">驱动 AI 引擎，快速将试卷转化为结构化数据。</p>
+          <div class="mb-8 flex items-end justify-between pl-2 sm:pl-0">
+            <div>
+              <h2 class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl dark:text-white">
+                智能录入与分析
+              </h2>
+              <p class="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">驱动 AI 引擎，快速将试卷转化为结构化数据。</p>
+            </div>
+            <button
+              @click="historyOpen = true"
+              class="inline-flex shrink-0 items-center gap-2 rounded-xl border border-slate-200/60 bg-white/60 px-4 py-2.5 text-sm font-bold text-slate-600 shadow-sm backdrop-blur-md transition-all hover:bg-white hover:text-blue-600 hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-indigo-300"
+            >
+              <i class="fa-solid fa-clock-rotate-left"></i>
+              分割历史
+            </button>
           </div>
 
           <!-- 原工作区主卡片 -->
@@ -687,6 +713,7 @@ onBeforeUnmount(() => {
         @update:scale="(s) => modalScale = s"
       />
       <ToastContainer :toasts="toasts" />
+      <SplitHistory :open="historyOpen" @close="historyOpen = false" @load-record="loadFromHistory" />
 
       <!-- 答案录入弹窗（AI 辅导前置） -->
       <div v-if="answerModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">

@@ -190,6 +190,24 @@ export async function requestAiAnalysis(questionIds) {
   throw new Error((data && data.error) || 'AI 分析请求失败')
 }
 
+// ── 分割历史 API ──────────────────────────────────────────
+
+export async function fetchSplitRecords(limit = 10) {
+  const resp = await fetch(`/api/split-records?limit=${limit}`)
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  const data = await resp.json()
+  if (data && data.success) return data.records
+  throw new Error((data && data.error) || '获取分割记录失败')
+}
+
+export async function fetchSplitRecord(id) {
+  const resp = await fetch(`/api/split-records/${id}`)
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  const data = await resp.json()
+  if (data && data.success) return data.record
+  throw new Error((data && data.error) || '获取分割记录详情失败')
+}
+
 // ── AI 辅导对话 API ──────────────────────────────────────
 
 export async function saveQuestionAnswer(questionId, answer) {
