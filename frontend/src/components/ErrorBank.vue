@@ -331,14 +331,6 @@ onBeforeUnmount(() => {
           <CustomSelect v-model="filters.review_status" :options="['待复习', '复习中', '已掌握']" label="复习状态" placeholder="全部状态" />
         </div>
 
-        <!-- 重置筛选 -->
-        <div class="flex items-center">
-          <button @click="resetFilters" title="重置筛选"
-            class="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200/60 bg-white/60 px-4 text-sm font-bold text-slate-500 backdrop-blur-xl transition-all hover:border-slate-300 hover:bg-white/80 hover:text-slate-700 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-400 dark:hover:border-white/20 dark:hover:bg-white/[0.06] dark:hover:text-slate-200">
-            <i class="fa-solid fa-arrow-rotate-right text-sm"></i> 重置筛选
-          </button>
-        </div>
-
         <!-- 知识点多选标签 -->
         <Transition
           enter-active-class="transition-all duration-300 ease-out"
