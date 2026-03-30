@@ -1,10 +1,11 @@
 <script setup>
 
-defineProps({
+const props = defineProps({
   splitEnabled: { type: Boolean, default: false },
   exportEnabled: { type: Boolean, default: false },
   splitting: { type: Boolean, default: false },
   splitCompleted: { type: Boolean, default: false },
+  uploadMode: { type: String, default: 'exam' },
 })
 
 const emit = defineEmits(['split', 'export', 'save-to-db'])
@@ -30,16 +31,16 @@ const emit = defineEmits(['split', 'export', 'save-to-db'])
       <!-- 按钮本体 -->
       <span class="relative inline-flex h-full w-full items-center justify-center gap-3 rounded-2xl bg-slate-900 px-10 text-[13px] font-black tracking-widest text-white shadow-2xl group-hover:-translate-y-0.5 group-active:translate-y-0 dark:bg-white dark:text-slate-900">
         <template v-if="splitting">
-          <i class="fa-solid fa-spinner fa-spin text-blue-400"></i>
-          <span>正在智能分割...</span>
+          <i class="fa-solid fa-spinner fa-spin" :class="uploadMode === 'note' ? 'text-emerald-400' : 'text-blue-400'"></i>
+          <span>{{ uploadMode === 'note' ? '正在整理笔记...' : '正在智能分割...' }}</span>
         </template>
         <template v-else-if="splitCompleted">
           <i class="fa-solid fa-check-double text-emerald-400"></i>
-          <span>解析已完成</span>
+          <span>{{ uploadMode === 'note' ? '整理已完成' : '解析已完成' }}</span>
         </template>
         <template v-else>
-          <i class="fa-solid fa-wand-magic-sparkles text-blue-400 group-hover:animate-pulse"></i>
-          <span>启动 AI 智能分割</span>
+          <i class="fa-solid" :class="uploadMode === 'note' ? 'fa-book-open text-emerald-400 group-hover:animate-pulse' : 'fa-wand-magic-sparkles text-blue-400 group-hover:animate-pulse'"></i>
+          <span>{{ uploadMode === 'note' ? '启动 AI 笔记整理' : '启动 AI 智能分割' }}</span>
         </template>
       </span>
     </button>

@@ -308,6 +308,7 @@ const closeModal = () => {
 const onKeydown = (e) => { if (e.key === 'Escape' && modalOpen.value) closeModal() }
 
 // ---- 上传状态 ----
+const uploadMode = ref('exam')  // 'exam'（试卷分割）或 'note'（笔记整理）
 const uploadBusy = ref(false)
 const uploadReady = ref(false)
 const splitting = ref(false)
@@ -485,6 +486,14 @@ const typesetMath = async () => {
 }
 const doSplit = async () => {
   if (!uploadReady.value || splitting.value || splitCompleted.value) return
+
+  // 笔记模式：走笔记整理流程
+  if (uploadMode.value === 'note') {
+    await doNoteOrganize()
+    return
+  }
+
+  // 试卷模式：走原有分割流程
   splitting.value = true
   step.value = 3
   pushToast('info', '正在调用AI分割题目，请稍候...', 1800)
@@ -502,7 +511,6 @@ const doSplit = async () => {
         pushToast('success', `成功分割 ${questions.value.length} 道题目`)
       }
       await typesetMath()
-      // 分割完成后自动翻页到核对页面（仅在用户仍在工作台时跳转）
       setTimeout(() => {
         if (currentView.value === 'workspace') {
           currentView.value = 'workspace_review'
@@ -511,6 +519,41 @@ const doSplit = async () => {
     }
   } catch (e) {
     pushToast('error', '分割失败: ' + (e instanceof Error ? e.message : String(e)))
+  } finally {
+    splitting.value = false
+  }
+}
+
+const doNoteOrganize = async () => {
+  splitting.value = true
+  step.value = 3
+  pushToast('info', '正在调用AI整理笔记，请稍候...', 3000)
+  try {
+    // 收集已上传文件，构建 FormData 发给笔记 API
+    const formData = new FormData()
+    for (const pf of pendingFiles) {
+      if (pf.file) formData.append('files', pf.file)
+    }
+    formData.append('model_provider', selectedProvider.value)
+    if (selectedModel.value) formData.append('model_name', selectedModel.value)
+
+    const result = await new Promise((resolve, reject) => {
+      api.createNote(formData, {
+        onSuccess: (data) => resolve(data),
+        onError: (msg) => reject(new Error(msg)),
+      })
+    })
+
+    splitCompleted.value = true
+    step.value = 4
+    pushToast('success', '笔记整理完成！')
+
+    // 跳转到笔记页面查看
+    setTimeout(() => {
+      currentView.value = 'notes'
+    }, 800)
+  } catch (e) {
+    pushToast('error', '笔记整理失败: ' + (e instanceof Error ? e.message : String(e)))
   } finally {
     splitting.value = false
   }
@@ -842,6 +885,24 @@ onBeforeUnmount(() => {
                   </div>
 
                   <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar flex flex-col space-y-8 py-6">
+                    <!-- 模式切换：试卷 / 笔记 -->
+                    <div class="flex items-center gap-2 rounded-xl border border-slate-200/60 bg-white/60 p-1 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.03]">
+                      <button
+                        @click="uploadMode = 'exam'"
+                        class="flex-1 h-9 rounded-lg text-sm font-bold transition-all"
+                        :class="uploadMode === 'exam' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'"
+                      >
+                        <i class="fa-solid fa-file-lines mr-2"></i>试卷分割
+                      </button>
+                      <button
+                        @click="uploadMode = 'note'"
+                        class="flex-1 h-9 rounded-lg text-sm font-bold transition-all"
+                        :class="uploadMode === 'note' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'"
+                      >
+                        <i class="fa-solid fa-book-open mr-2"></i>笔记整理
+                      </button>
+                    </div>
+
                     <StepIndicator :step="step" class="border-b border-slate-200/60 pb-8 dark:border-white/5" />
 
                     <FileList
@@ -878,6 +939,7 @@ onBeforeUnmount(() => {
                     :export-enabled="false"
                     :splitting="splitting"
                     :split-completed="splitCompleted"
+                    :upload-mode="uploadMode"
                     @split="doSplit"
                   />
 
