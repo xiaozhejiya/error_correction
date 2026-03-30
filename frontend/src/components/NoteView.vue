@@ -1,7 +1,9 @@
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, nextTick } from 'vue'
 import * as api from '../api.js'
 import { renderMarkdown, typesetMath } from '../utils.js'
+
+const noteContentRef = ref(null)
 
 const props = defineProps({
   visible: Boolean,
@@ -110,6 +112,11 @@ async function openNote(note) {
   try {
     const full = await api.fetchNote(note.id)
     selectedNote.value = full
+    // 等 DOM 完全更新后渲染 LaTeX 公式（nextTick + 延迟，确保过渡动画完成）
+    await nextTick()
+    setTimeout(() => {
+      if (noteContentRef.value) typesetMath(noteContentRef.value)
+    }, 100)
   } catch (e) {
     emit('push-toast', 'error', e.message)
   }
@@ -137,6 +144,10 @@ async function saveEdit() {
     editing.value = false
     emit('push-toast', 'success', '已保存')
     loadNotes()
+    await nextTick()
+    setTimeout(() => {
+      if (noteContentRef.value) typesetMath(noteContentRef.value)
+    }, 100)
   } catch (e) {
     emit('push-toast', 'error', e.message)
   }
@@ -226,14 +237,32 @@ async function doDelete(noteId) {
         </div>
 
         <!-- 查看模式 -->
-        <div v-else>
+        <div v-else ref="noteContentRef">
           <h2 class="mb-2 text-3xl font-bold text-slate-900 leading-tight dark:text-white">{{ selectedNote.title }}</h2>
           <div class="mb-6 flex flex-wrap items-center gap-2">
             <span v-if="selectedNote.subject" class="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700 dark:bg-indigo-500/20 dark:text-indigo-300">{{ selectedNote.subject }}</span>
             <span v-for="tag in selectedNote.knowledge_tags" :key="tag" class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600 dark:bg-white/[0.06] dark:text-slate-300">{{ tag }}</span>
             <span class="text-xs text-slate-400">{{ selectedNote.updated_at?.slice(0, 10) }}</span>
           </div>
-          <article class="prose prose-slate max-w-none dark:prose-invert" v-html="renderMarkdown(selectedNote.content_markdown || '')"></article>
+
+          <!-- Markdown 渲染内容 + LaTeX 公式 -->
+          <article class="prose prose-slate max-w-none dark:prose-invert prose-headings:text-slate-900 dark:prose-headings:text-white prose-p:leading-relaxed prose-a:text-blue-600" v-html="renderMarkdown(selectedNote.content_markdown || '')"></article>
+
+          <!-- 原始上传图片 -->
+          <div v-if="selectedNote.source_images?.length" class="mt-8 border-t border-slate-200/60 pt-6 dark:border-white/10">
+            <h3 class="mb-4 text-base font-bold text-slate-700 dark:text-slate-300">
+              <i class="fa-solid fa-image mr-2 text-slate-400"></i>原始笔记图片
+            </h3>
+            <div class="grid gap-4 sm:grid-cols-2">
+              <img
+                v-for="(src, idx) in selectedNote.source_images"
+                :key="idx"
+                :src="'/images/' + src.split('/imgs/').pop() || src"
+                class="w-full rounded-xl border border-slate-200/60 dark:border-white/10"
+                @error="$event.target.style.display='none'"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

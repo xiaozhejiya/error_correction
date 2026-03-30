@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@headlessui/vue": "^1.7.23",
+    "@tailwindcss/typography": "^0.5.19",
     "dompurify": "^3.3.2",
     "lucide-vue-next": "^0.577.0",
     "vue": "^3.5.24",

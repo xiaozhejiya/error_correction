@@ -133,6 +133,15 @@ def _safe_join(base_dir: str, rel_path: str) -> str | None:
     return None
 
 
+@app.route('/uploads/<path:filename>')
+def serve_upload(filename):
+    """提供用户上传的原始文件（笔记图片等）"""
+    file_path = _safe_join(str(settings.upload_dir), filename)
+    if not file_path or not os.path.exists(file_path):
+        return jsonify({'success': False, 'error': '文件不存在'}), 404
+    return send_file(file_path)
+
+
 @app.route('/download/<path:filename>')
 def download_file(filename):
     """下载结果文件（如导出的 Markdown 错题本）

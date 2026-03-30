@@ -50,9 +50,9 @@ export const renderMarkdown = (text) => {
       ...ALLOWED_HTML_TAGS,
       'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
       'ul', 'ol', 'li', 'code', 'pre', 'blockquote', 'hr',
-      'a',
+      'a', 'img',
     ],
-    ALLOWED_ATTR: ['href', 'target', 'rel'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt'],
   })
 }
 

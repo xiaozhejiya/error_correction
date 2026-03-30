@@ -31,8 +31,10 @@ def invoke_note_organize(
     """
     model = init_model(temperature=0.3, provider=provider, model_name=model_name)
 
-    # 使用 with_structured_output 强制输出为 OrganizedNote 格式
-    structured_model = model.with_structured_output(OrganizedNote)
+    # 使用 function_calling 方式实现结构化输出
+    # DeepSeek 等 OpenAI 兼容 API 不支持 response_format（JSON Schema），
+    # 但支持 function calling，所以显式指定 method="function_calling"
+    structured_model = model.with_structured_output(OrganizedNote, method="function_calling")
 
     result = structured_model.invoke([
         SystemMessage(content=NOTE_ORGANIZE_PROMPT),

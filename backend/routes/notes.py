@@ -103,12 +103,18 @@ def create_note():
         raw_results = run_async(client.parse_images_async(saved_paths))
         simplified = simplify_ocr_results(raw_results)
 
-        # 拼接 OCR 文本
+        # 拼接 OCR 文本 + 图片引用
         ocr_text_parts = []
+        image_refs = []
         for page in simplified:
             for block in page.get('blocks', []):
+                label = block.get('block_label', '')
                 content = block.get('block_content', '').strip()
-                if content:
+                if label in ('image', 'chart') and content:
+                    # 图片块：记录路径，在文本中插入占位符
+                    image_refs.append(content)
+                    ocr_text_parts.append(f'[图片: {content}]')
+                elif content:
                     ocr_text_parts.append(content)
         ocr_text = '\n'.join(ocr_text_parts)
 
