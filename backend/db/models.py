@@ -25,6 +25,7 @@ class User(Base):
     upload_batches = relationship("UploadBatch", back_populates="user")
     split_records = relationship("SplitRecord", back_populates="user")
     provider_configs = relationship("ProviderConfig", back_populates="user", cascade="all, delete-orphan")
+    notes = relationship("Note", back_populates="user")
 
 
 class ProviderConfig(Base):
@@ -163,4 +164,33 @@ class QuestionTagMapping(Base):
     tag_id = Column(Integer, ForeignKey("knowledge_tags.id"), primary_key=True)
 
     question = relationship("Question", back_populates="tags")
+    tag = relationship("KnowledgeTag")
+
+
+class Note(Base):
+    """笔记表"""
+    __tablename__ = "notes"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    title = Column(String(255), nullable=False)          # 笔记标题
+    subject = Column(String(50))                          # 科目
+    content_markdown = Column(Text, default="")           # LLM 整理后的 Markdown 内容
+    source_images_json = Column(Text)                     # 原始上传图片路径列表 JSON
+    ocr_text = Column(Text)                               # OCR 识别的原始文本（保留用于重新整理）
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="notes")
+    tags = relationship("NoteTagMapping", back_populates="note", cascade="all, delete-orphan")
+
+
+class NoteTagMapping(Base):
+    """笔记-标签关联表（与错题共享 KnowledgeTag）"""
+    __tablename__ = "note_tag_mapping"
+
+    note_id = Column(Integer, ForeignKey("notes.id"), primary_key=True)
+    tag_id = Column(Integer, ForeignKey("knowledge_tags.id"), primary_key=True)
+
+    note = relationship("Note", back_populates="tags")
     tag = relationship("KnowledgeTag")

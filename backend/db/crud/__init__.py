@@ -92,6 +92,14 @@ from db.crud.providers import (
     get_active_provider,
 )
 
+from db.crud.notes import (
+    save_note,
+    get_notes,
+    get_note_by_id,
+    update_note,
+    delete_note,
+)
+
 __all__ = [
     # shared helpers
     "_filter_by_subject",
@@ -148,4 +156,10 @@ __all__ = [
     "get_user_providers",
     "save_user_providers",
     "get_active_provider",
+    # notes
+    "save_note",
+    "get_notes",
+    "get_note_by_id",
+    "update_note",
+    "delete_note",
 ]
