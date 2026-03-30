@@ -66,7 +66,7 @@ const NAV_ITEMS = [
   { id: 'workspace', label: '录题工作台', icon: 'fa-wand-magic-sparkles', match: (v) => WORKSPACE_VIEWS.has(v) },
   { id: 'dashboard', label: '数据面板', icon: 'fa-chart-pie', match: (v) => v === 'dashboard' },
   { id: 'error-bank', label: '错题库', icon: 'fa-database', match: (v) => v === 'error-bank' },
-  { id: 'notes', label: '笔记', icon: 'fa-book-open', match: (v) => v === 'notes' },
+  { id: 'notes', label: '笔记库', icon: 'fa-book-open', match: (v) => v === 'notes' },
 ]
 
 const currentView = computed({
@@ -806,7 +806,7 @@ onBeforeUnmount(() => {
         </button>
         <button @click="currentView = 'notes'" class="flex flex-col items-center p-2" :class="currentView === 'notes' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
           <i class="fa-solid fa-book-open text-lg"></i>
-          <span class="mt-1 text-xs font-bold">笔记</span>
+          <span class="mt-1 text-xs font-bold">笔记库</span>
         </button>
         <button @click="currentView = 'dashboard'" class="flex flex-col items-center p-2" :class="currentView === 'dashboard' ? 'text-blue-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'">
           <i class="fa-solid fa-chart-pie text-lg"></i>

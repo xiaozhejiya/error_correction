@@ -6,6 +6,7 @@ import PageHeader from './PageHeader.vue'
 import GlassCard from './GlassCard.vue'
 import GlassButton from './GlassButton.vue'
 import SearchInput from './SearchInput.vue'
+import CustomSelect from './CustomSelect.vue'
 
 const noteContentRef = ref(null)
 
@@ -15,13 +16,13 @@ const props = defineProps({
   modelName: { type: String, default: '' },
   theme: String,
 })
-const emit = defineEmits(['push-toast'])
+const emit = defineEmits(['push-toast', 'open-image'])
 
 // ---- 状态 ----
 const notes = ref([])
 const total = ref(0)
 const page = ref(1)
-const pageSize = ref(12)
+const pageSize = ref(10)
 const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
 const loading = ref(false)
 const creating = ref(false)
@@ -29,7 +30,18 @@ const createProgress = ref(0)
 
 // 筛选
 const filterSubject = ref('')
+const filterTag = ref('')
 const filterKeyword = ref('')
+const subjects = ref([])
+const tagNames = ref([])
+
+// 加载筛选选项
+async function loadFilterOptions() {
+  try {
+    const subjectData = await api.fetchSubjects()
+    subjects.value = subjectData.subjects || []
+  } catch (_) {}
+}
 
 // 详情/编辑
 const selectedNote = ref(null)
@@ -45,6 +57,7 @@ async function loadNotes() {
       page: page.value,
       limit: pageSize.value,
       subject: filterSubject.value || undefined,
+      knowledge_tag: filterTag.value || undefined,
       keyword: filterKeyword.value || undefined,
     })
     notes.value = data.items
@@ -56,8 +69,10 @@ async function loadNotes() {
   }
 }
 
-watch(() => props.visible, (v) => { if (v) loadNotes() }, { immediate: true })
-watch([page, filterSubject], () => loadNotes())
+watch(() => props.visible, (v) => {
+  if (v) { loadNotes(); loadFilterOptions() }
+}, { immediate: true })
+watch([page, filterSubject, filterTag], () => { page.value === 1 ? loadNotes() : (page.value = 1) })
 
 let keywordTimer = null
 watch(filterKeyword, () => {
@@ -178,8 +193,8 @@ async function doDelete(noteId) {
       <!-- List View -->
       <div v-if="!selectedNote">
         <PageHeader
-          title="学习笔记"
-          subtitle="AI 自动提取手写笔记/板书中的核心知识点，支持跨模态检索"
+          title="笔记库"
+          subtitle="AI 自动提取手写笔记/板书中的核心知识点"
           badge="NOTES"
           badgeIcon="fa-solid fa-book-open"
           badgeColor="emerald"
@@ -189,7 +204,7 @@ async function doDelete(noteId) {
               <button
                 @click="triggerUpload"
                 :disabled="creating"
-                class="btn-primary group h-10 px-6 shadow-md shadow-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                class="btn-success group h-10 px-6 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <i class="fa-solid fa-plus transition-transform group-hover:rotate-90 mr-1"></i>
                 {{ creating ? '整理中...' : '上传笔记' }}
@@ -199,20 +214,26 @@ async function doDelete(noteId) {
           </template>
         </PageHeader>
 
-        <!-- Search and filters -->
-        <div class="relative z-20 mb-8 space-y-6">
-          <div class="flex flex-col sm:flex-row gap-6 items-center">
-            <div class="w-full sm:w-1/3">
-              <SearchInput v-model="filterKeyword" label="笔记检索" placeholder="搜索笔记内容..." />
-            </div>
-            
-            <!-- Progress Bar -->
-            <div v-if="creating" class="flex-1 w-full">
-              <div class="h-2 rounded-full bg-slate-200 dark:bg-slate-700">
-                <div class="h-full rounded-full bg-emerald-500 transition-all duration-300" :style="{ width: createProgress + '%' }"></div>
+        <!-- 筛选栏（对齐错题库风格） -->
+        <div class="relative z-20 mb-8">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
+            <SearchInput v-model="filterKeyword" label="内容检索" placeholder="搜索笔记关键词..." />
+            <CustomSelect v-model="filterSubject" :options="subjects" label="学科" placeholder="全部学科" />
+            <CustomSelect v-model="filterTag" :options="tagNames" label="知识点" placeholder="全部知识点" />
+            <div>
+              <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-400">统计</label>
+              <div class="flex h-10 items-center rounded-xl border border-slate-200/60 bg-white/60 px-4 text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-400">
+                共 {{ total }} 条笔记
               </div>
-              <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">OCR 识别 + AI 整理中... {{ createProgress }}%</p>
             </div>
+          </div>
+
+          <!-- 进度条 -->
+          <div v-if="creating" class="mt-4">
+            <div class="h-2 rounded-full bg-slate-200 dark:bg-slate-700">
+              <div class="h-full rounded-full bg-emerald-500 transition-all duration-300" :style="{ width: createProgress + '%' }"></div>
+            </div>
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">OCR 识别 + AI 整理中... {{ createProgress }}%</p>
           </div>
         </div>
 
