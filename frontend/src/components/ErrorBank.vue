@@ -3,7 +3,6 @@ import { ref, reactive, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import * as api from '../api.js'
 import { typesetMath as _typesetMath } from '../utils.js'
 import CustomSelect from './CustomSelect.vue'
-import DateRangePicker from './DateRangePicker.vue'
 import GlassCard from './GlassCard.vue'
 import PageHeader from './PageHeader.vue'
 import SearchInput from './SearchInput.vue'
@@ -26,8 +25,6 @@ const filters = reactive({
   knowledge_tag: '',
   question_type: '',
   keyword: '',
-  start_date: '',
-  end_date: '',
   review_status: '',
 })
 const page = ref(1)
@@ -92,8 +89,6 @@ const doQuery = async () => {
     if (filters.knowledge_tag) params.knowledge_tag = filters.knowledge_tag
     if (filters.question_type) params.question_type = filters.question_type
     if (filters.keyword) params.keyword = filters.keyword
-    if (filters.start_date) params.start_date = filters.start_date
-    if (filters.end_date) params.end_date = filters.end_date
     if (filters.review_status) params.review_status = filters.review_status
 
     const data = await api.fetchErrorBank(params)
@@ -113,7 +108,7 @@ const debouncedQuery = () => {
   debounceTimer = setTimeout(() => { page.value = 1; doQuery() }, 300)
 }
 
-watch(() => [filters.subject, filters.knowledge_tag, filters.question_type, filters.start_date, filters.end_date, filters.review_status], debouncedQuery)
+watch(() => [filters.subject, filters.knowledge_tag, filters.question_type, filters.review_status], debouncedQuery)
 watch(() => filters.keyword, () => {
   clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => { page.value = 1; doQuery() }, 500)
@@ -336,18 +331,11 @@ onBeforeUnmount(() => {
           <CustomSelect v-model="filters.review_status" :options="['待复习', '复习中', '已掌握']" label="复习状态" placeholder="全部状态" />
         </div>
 
-        <!-- 第二行：日期范围 + 重置筛选 -->
-        <div class="flex items-center gap-3">
-          <DateRangePicker
-            :start-date="filters.start_date"
-            :end-date="filters.end_date"
-            label="时间跨度"
-            @update:start-date="filters.start_date = $event"
-            @update:end-date="filters.end_date = $event"
-          />
+        <!-- 重置筛选 -->
+        <div class="flex items-center">
           <button @click="resetFilters" title="重置筛选"
-            class="mt-6 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200/60 bg-white/60 text-slate-500 backdrop-blur-xl transition-all hover:border-slate-300 hover:bg-white/80 hover:text-slate-700 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-400 dark:hover:border-white/20 dark:hover:bg-white/[0.06] dark:hover:text-slate-200">
-            <i class="fa-solid fa-arrow-rotate-right text-sm"></i>
+            class="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200/60 bg-white/60 px-4 text-sm font-bold text-slate-500 backdrop-blur-xl transition-all hover:border-slate-300 hover:bg-white/80 hover:text-slate-700 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-400 dark:hover:border-white/20 dark:hover:bg-white/[0.06] dark:hover:text-slate-200">
+            <i class="fa-solid fa-arrow-rotate-right text-sm"></i> 重置筛选
           </button>
         </div>
 
