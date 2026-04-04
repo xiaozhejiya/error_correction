@@ -425,6 +425,30 @@ def _fix_leading_images(questions: List[Dict[str, Any]]) -> None:
         )
 
 
+def _normalize_image_paths(questions: List[Dict[str, Any]]) -> None:
+    """修复 LLM 可能篡改的图片路径，原地修改。
+
+    LLM 有时会把输入中的 '/images/xxx.jpg' 改写为 'imgs/xxx.jpg'，
+    导致前端通过 Vite proxy 请求时路径不匹配。统一规范为 '/images/xxx'。
+    """
+    def _fix(path: str) -> str:
+        p = path.strip()
+        if p.startswith("imgs/"):
+            return "/images/" + p[len("imgs/"):]
+        return p
+
+    for q in questions:
+        for block in q.get("content_blocks") or []:
+            content = block.get("content", "")
+            if block.get("block_type") == "image":
+                block["content"] = _fix(content)
+            elif block.get("block_type") == "text" and "imgs/" in content:
+                # 修复 text block 中嵌入的 HTML 图片路径（如 table 中的 <img>）
+                block["content"] = content.replace('src="imgs/', 'src="/images/')
+        if q.get("image_refs"):
+            q["image_refs"] = [_fix(ref) for ref in q["image_refs"]]
+
+
 def _propagate_section_between_batches(batch_results: List[List[Dict[str, Any]]]) -> None:
     """跨批次传播 section_title，原地修改 batch_results。
 
@@ -772,6 +796,9 @@ def split_questions_node(state: WorkflowState) -> dict:
 
     # 修复 leading image（页面顶部图属于上一题）
     _fix_leading_images(deduped)
+
+    # 修复 LLM 可能篡改的图片路径（如 imgs/xxx → /images/xxx）
+    _normalize_image_paths(deduped)
 
     # 为每道题赋全局唯一 uid（顺序字符串），供前端选择和导出时使用
     for i, q in enumerate(deduped):

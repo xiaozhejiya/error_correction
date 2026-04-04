@@ -234,6 +234,9 @@ def simplify_ocr_results(ocr_results: list) -> List[Dict[str, Any]]:
                     if bbox:
                         prefix = "img_in_chart_box" if label == "chart" else "img_in_image_box"
                         content = f"/images/{prefix}_{int(bbox[0])}_{int(bbox[1])}_{int(bbox[2])}_{int(bbox[3])}.jpg"
+                # 统一 OCR 原始输出中的图片路径：imgs/ → /images/
+                if 'src="imgs/' in content:
+                    content = content.replace('src="imgs/', 'src="/images/')
                 slim_blocks.append({
                     "block_label": label,
                     "block_content": content,
