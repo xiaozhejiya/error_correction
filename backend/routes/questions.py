@@ -23,7 +23,7 @@ def _effective_user_id():
     return session.get('user_id')
 
 
-def _serialize_question(q: Question) -> dict:
+def _serialize_question(q: Question, include_user=False) -> dict:
     """将 Question ORM 对象序列化为前端 JSON 格式"""
     subject = None
     if q.batch:
@@ -34,7 +34,7 @@ def _serialize_question(q: Question) -> dict:
             if mapping.tag:
                 knowledge_tags.append(mapping.tag.tag_name)
 
-    return {
+    result = {
         'id': q.id,
         'question_type': q.question_type,
         'content_json': json.loads(q.content_json) if q.content_json else [],
@@ -47,11 +47,14 @@ def _serialize_question(q: Question) -> dict:
         'knowledge_tags': knowledge_tags,
         'created_at': q.created_at.isoformat() if q.created_at else None,
     }
+    if include_user and q.user:
+        result['username'] = q.user.username
+    return result
 
 
-def _serialize_question_detail(q: Question) -> dict:
+def _serialize_question_detail(q: Question, include_user=False) -> dict:
     """将 Question ORM 对象序列化为详情 JSON（含科目、标签、答案等）"""
-    base = _serialize_question(q)
+    base = _serialize_question(q, include_user=include_user)
     # subject / knowledge_tags already set by _serialize_question
     base['original_filename'] = q.batch.original_filename if q.batch else None
     base['user_answer'] = q.user_answer
@@ -279,6 +282,7 @@ def get_error_bank():
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
 
         with SessionLocal() as db:
+            is_admin = session.get('is_admin', False)
             questions, total = crud.query_questions(
             db,
             user_id=_effective_user_id(),
@@ -294,7 +298,7 @@ def get_error_bank():
             )
 
             total_pages = (total + page_size - 1) // page_size
-            items = [_serialize_question_detail(q) for q in questions]
+            items = [_serialize_question_detail(q, include_user=is_admin) for q in questions]
 
             return jsonify({
                 'success': True,

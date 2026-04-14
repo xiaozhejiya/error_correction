@@ -190,8 +190,10 @@ defineExpose({ refresh: loadRecords })
               <span class="text-sm font-medium text-[#f7f8f8] truncate">{{ r.subject || '未识别' }}</span>
               <span class="text-xs tabular-nums text-[rgb(129,115,223)]">{{ r.question_count }} 题</span>
             </div>
-            <!-- 二行：文件数 + 时间 -->
+            <!-- 二行：用户名（仅管理员显示） + 文件数 + 时间 -->
             <div class="flex items-center gap-2 text-xs text-[#62666d]">
+              <span v-if="r.username" class="text-amber-500 dark:text-amber-400">{{ r.username }}</span>
+              <span v-if="r.username">·</span>
               <span>{{ (r.file_names || []).length }} 个文件</span>
               <span>·</span>
               <span :title="formatFullDate(r.created_at)">{{ formatDate(r.created_at) }}</span>

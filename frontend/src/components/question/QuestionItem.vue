@@ -71,6 +71,7 @@ const statusIcon = (status) => {
         <div class="mb-2 flex flex-wrap items-center gap-2">
           <!-- 复习状态图标 -->
           <i v-if="showStatus" class="fa-solid text-sm" :class="[statusIcon(question.review_status), statusColor(question.review_status)]"></i>
+          <span v-if="question.username" class="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-500">{{ question.username }}</span>
           <span class="rounded-full bg-white/[0.04] px-2 py-0.5 text-xs font-medium text-[#8a8f98]">{{ question.question_type }}</span>
           <span v-if="question.subject" class="rounded-full bg-[rgb(129,115,223)]/10 px-2 py-0.5 text-xs font-medium text-[rgb(145,132,235)]">{{ question.subject }}</span>
           <span v-for="tag in tags()" :key="tag" class="rounded-full border border-white/[0.06] px-2 py-0.5 text-xs font-medium text-[#8a8f98]">{{ tag }}</span>

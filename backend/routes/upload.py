@@ -41,9 +41,9 @@ def _read_split_subject() -> Optional[str]:
     return None
 
 
-def _serialize_split_record(r) -> dict:
+def _serialize_split_record(r, include_user=False) -> dict:
     """将 SplitRecord ORM 对象序列化为前端 JSON 格式"""
-    return {
+    result = {
         "id": r.id,
         "subject": r.subject,
         "model_provider": r.model_provider,
@@ -51,6 +51,9 @@ def _serialize_split_record(r) -> dict:
         "question_count": r.question_count,
         "created_at": r.created_at.isoformat() if r.created_at else None,
     }
+    if include_user and r.user:
+        result["username"] = r.user.username
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -546,11 +549,14 @@ def get_split_records():
     """获取最近 N 次分割历史记录，limit 由前端通过查询参数指定"""
     try:
         limit = request.args.get('limit', 10, type=int)
-        limit = max(1, min(limit, crud.MAX_SPLIT_RECORDS))  # 上限与保留条数一致
+        limit = max(1, min(limit, crud.MAX_SPLIT_RECORDS))
+
+        is_admin = session.get('is_admin', False)
+        user_id = None if is_admin else session.get('user_id')
 
         with SessionLocal() as db:
-            records = crud.get_recent_split_records(db, limit, user_id=session.get('user_id'))
-            result = [_serialize_split_record(r) for r in records]
+            records = crud.get_recent_split_records(db, limit, user_id=user_id)
+            result = [_serialize_split_record(r, include_user=is_admin) for r in records]
 
         return jsonify({"success": True, "records": result})
 
