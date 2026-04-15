@@ -66,6 +66,7 @@ const reviewStatusClass = (status) => {
 // ---- 数据 ----
 const items = ref([])
 const total = ref(0)
+const grandTotal = ref(0)
 const totalPages = ref(0)
 const loading = ref(false)
 const subjects = ref([])
@@ -94,7 +95,7 @@ const clearTagSelection = () => {
 }
 
 
-const totalText = computed(() => `共收录 ${total.value} 道题目`)
+const totalText = computed(() => `共收录 ${grandTotal.value} 道题目`)
 
 // ---- 查询 ----
 let debounceTimer = null
@@ -111,6 +112,7 @@ const doQuery = async () => {
     const data = await api.fetchErrorBank(params)
     items.value = data.items || []
     total.value = data.total || 0
+    grandTotal.value = data.grand_total ?? data.total ?? 0
     totalPages.value = data.total_pages || 0
   } catch (e) {
     pushToast('error', e instanceof Error ? e.message : String(e))

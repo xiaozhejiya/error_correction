@@ -113,6 +113,20 @@ def get_review_status_stats(db: Session, subject: Optional[str] = None, user_id=
     return result
 
 
+def get_today_mastered_count(db: Session, subject: Optional[str] = None, user_id=None) -> int:
+    """获取今日新掌握的题目数（updated_at 在今天且状态为已掌握）"""
+    _filter_by_subject, _filter_by_user = _get_filters()
+
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    query = _filter_by_subject(db.query(func.count(Question.id)).filter(
+        Question.updated_at >= today_start,
+        Question.review_status == '已掌握',
+    ), subject)
+    if user_id is not None:
+        query = query.filter(Question.user_id == user_id)
+    return query.scalar() or 0
+
+
 def get_daily_counts(db: Session, days: int = 7, subject: Optional[str] = None, user_id=None) -> List[Dict[str, Any]]:
     """获取最近 N 天每日新增题目数 + 每日新增已掌握数"""
     from datetime import timedelta

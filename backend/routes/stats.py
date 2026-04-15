@@ -55,6 +55,9 @@ def get_dashboard_stats():
             # 知识点 × 题型（热力图）
             tag_type_stats = crud.get_tag_type_stats(db, subject=subject, tag_limit=8, user_id=uid)
 
+            # 今日掌握数
+            today_mastered = crud.get_today_mastered_count(db, subject=subject, user_id=uid)
+
             # 最近30天每日新增 + 已掌握趋势
             daily_counts = crud.get_daily_counts(db, days=30, subject=subject, user_id=uid)
 
@@ -62,6 +65,7 @@ def get_dashboard_stats():
                 'success': True,
                 'subjects': subjects,
                 'review_stats': review_stats,
+                'today_mastered': today_mastered,
                 'total_questions': statistics['total_questions'],
                 'by_subject': statistics['by_subject'],
                 'tag_stats': tag_stats,

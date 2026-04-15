@@ -294,6 +294,9 @@ def query_questions(
     if user_id is not None:
         query = query.filter(Question.user_id == user_id)
 
+    # 未筛选的总收录数（仅按用户隔离）
+    grand_total = query.distinct().count()
+
     if subject:
         query = query.filter(UploadBatch.subject == subject)
 
@@ -332,7 +335,7 @@ def query_questions(
         .all()
     )
 
-    return questions, total
+    return questions, total, grand_total
 
 
 def get_questions_by_ids(db: Session, question_ids: List[int], user_id=None) -> List[Question]:

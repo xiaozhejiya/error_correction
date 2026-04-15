@@ -283,7 +283,7 @@ def get_error_bank():
 
         with SessionLocal() as db:
             is_admin = session.get('is_admin', False)
-            questions, total = crud.query_questions(
+            questions, total, grand_total = crud.query_questions(
             db,
             user_id=_effective_user_id(),
                 subject=subject,
@@ -304,6 +304,7 @@ def get_error_bank():
                 'success': True,
                 'items': items,
                 'total': total,
+                'grand_total': grand_total,
                 'page': page,
                 'page_size': page_size,
                 'total_pages': total_pages,

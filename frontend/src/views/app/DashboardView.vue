@@ -260,7 +260,7 @@ onBeforeUnmount(() => {
           <StatCard label="总错题" icon="fa-solid fa-layer-group" :value="stats?.total_questions || 0" unit="道" color="indigo" />
           <StatCard label="待复习" icon="fa-solid fa-clock" :value="stats?.review_stats?.['待复习'] || 0" unit="道" color="blue" />
           <StatCard label="已掌握" icon="fa-solid fa-circle-check" :value="stats?.review_stats?.['已掌握'] || 0" unit="道" color="emerald" />
-          <StatCard label="今日掌握" icon="fa-solid fa-bolt" :value="stats?.review_stats?.['已掌握'] || 0" unit="道" color="slate" />
+          <StatCard label="今日掌握" icon="fa-solid fa-bolt" :value="stats?.today_mastered || 0" unit="道" color="slate" />
         </div>
 
         <!-- 图表区第一行：趋势 + 条形图 -->
