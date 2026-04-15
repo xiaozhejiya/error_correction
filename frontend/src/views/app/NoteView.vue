@@ -247,6 +247,7 @@ async function doDelete(noteId) {
                 {{ note.content_markdown?.replace(/[#*`>\-]/g, '').slice(0, 120) }}...
               </p>
               <div class="flex flex-wrap items-center gap-2">
+                <span v-if="note.username" class="rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-500">{{ note.username }}</span>
                 <span v-if="note.subject" class="rounded-md bg-[rgb(129,115,223)]/10 px-2 py-0.5 text-xs font-medium text-[rgb(145,132,235)]">{{ note.subject }}</span>
                 <span v-for="tag in (note.knowledge_tags || []).slice(0, 3)" :key="tag" class="rounded-md border border-white/[0.06] px-2 py-0.5 text-xs text-[#8a8f98]">{{ tag }}</span>
                 <span class="ml-auto text-xs text-[#62666d]">{{ note.updated_at?.slice(0, 10) }}</span>

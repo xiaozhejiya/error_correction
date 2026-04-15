@@ -33,7 +33,7 @@ def _allowed_image(filename):
     return PurePath(filename).suffix.lower().lstrip('.') in {'png', 'jpg', 'jpeg', 'bmp', 'tiff', 'webp'}
 
 
-def _serialize_note(note) -> dict:
+def _serialize_note(note, include_user=False) -> dict:
     """将 Note ORM 对象序列化为前端 JSON"""
     knowledge_tags = []
     if note.tags:
@@ -41,7 +41,7 @@ def _serialize_note(note) -> dict:
             if mapping.tag:
                 knowledge_tags.append(mapping.tag.tag_name)
 
-    return {
+    result = {
         'id': note.id,
         'title': note.title,
         'subject': note.subject,
@@ -51,6 +51,9 @@ def _serialize_note(note) -> dict:
         'created_at': note.created_at.isoformat() if note.created_at else None,
         'updated_at': note.updated_at.isoformat() if note.updated_at else None,
     }
+    if include_user and note.user:
+        result['username'] = note.user.username
+    return result
 
 
 @bp.route('/', methods=['POST'])
@@ -169,7 +172,9 @@ def list_notes():
         subject = request.args.get('subject') or None
         knowledge_tag = request.args.get('knowledge_tag') or None
         keyword = request.args.get('keyword') or None
-        user_id = session.get('user_id')
+
+        is_admin = session.get('is_admin', False)
+        user_id = None if is_admin else session.get('user_id')
 
         with SessionLocal() as db:
             notes, total = crud.get_notes(
@@ -183,7 +188,7 @@ def list_notes():
             )
             return jsonify({
                 'success': True,
-                'items': [_serialize_note(n) for n in notes],
+                'items': [_serialize_note(n, include_user=is_admin) for n in notes],
                 'total': total,
                 'page': page,
                 'total_pages': (total + limit - 1) // limit,
