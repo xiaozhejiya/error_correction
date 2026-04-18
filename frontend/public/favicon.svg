@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="rgba(129,115,223,0.95)"/>
+      <stop offset="100%" stop-color="rgba(99,87,199,0.95)"/>
+    </linearGradient>
+    <pattern id="grid" width="8" height="8" patternUnits="userSpaceOnUse">
+      <path d="M 8 0 L 0 0 0 8" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="0.5"/>
+    </pattern>
+    <radialGradient id="mask-grad" cx="50%" cy="50%" r="50%">
+      <stop offset="30%" stop-color="white"/>
+      <stop offset="80%" stop-color="white" stop-opacity="0"/>
+    </radialGradient>
+    <mask id="grid-mask">
+      <rect width="64" height="64" fill="url(#mask-grad)"/>
+    </mask>
+  </defs>
+  <!-- 圆角背景 -->
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <!-- 顶部高光 -->
+  <rect x="0" y="0" width="64" height="1" rx="14" fill="rgba(255,255,255,0.15)"/>
+  <!-- 网格纹理 -->
+  <rect width="64" height="64" rx="14" fill="url(#grid)" mask="url(#grid-mask)"/>
+  <!-- 书本图标（缩放居中） -->
+  <g transform="translate(12, 14) scale(0.07)">
+    <path fill="#ffffff" d="M249.6 471.5c10.8 3.8 22.4-4.1 22.4-15.5l0-377.4c0-4.2-1.6-8.4-5-11C247.4 52 202.4 32 144 32C93.5 32 46.3 45.3 18.1 56.1C6.8 60.5 0 71.7 0 83.8L0 454.1c0 11.9 12.8 20.2 24.1 16.5C55.6 460.1 105.5 448 144 448c33.9 0 79 14 105.6 23.5zm76.8 0C353 462 398.1 448 432 448c38.5 0 88.4 12.1 119.9 22.6c11.3 3.8 24.1-4.6 24.1-16.5l0-370.3c0-12.1-6.8-23.3-18.1-27.6C529.7 45.3 482.5 32 432 32c-58.4 0-103.4 20-123 35.6c-3.3 2.6-5 6.8-5 11L304 456c0 11.4 11.7 19.3 22.4 15.5z"/>
+  </g>
+</svg>

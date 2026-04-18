@@ -1,0 +1,327 @@
+[
+  {
+    "page_index": 0,
+    "blocks": [
+      {
+        "block_label": "doc_title",
+        "block_content": "2023 年普通高等学校招生全国统一考试",
+        "block_order": 1
+      },
+      {
+        "block_label": "doc_title",
+        "block_content": "理科数学",
+        "block_order": 2
+      },
+      {
+        "block_label": "paragraph_title",
+        "block_content": "一、选择题",
+        "block_order": 3
+      },
+      {
+        "block_label": "text",
+        "block_content": "1 设  $ z=\\frac{2+i}{1+i^{2}+i^{5}} $ ，则  $ \\overline{z}= $ （ ）\nA. 1-2i B.  $ 1+2i $ C. 2-i D.  $ 2+i $",
+        "block_order": 4
+      },
+      {
+        "block_label": "text",
+        "block_content": "2. 设集合  $ U = \\mathbb{R} $，集合  $ M = \\{x | x < 1\\} $， $ N = \\{x | -1 < x < 2\\} $，则  $ \\{x | x \\geq 2\\} = $ （ ）\n\nA.  $ \\complement_U (M \\cup N) $  \nB.  $ N \\cup \\complement_U M $  \nC.  $ \\complement_U (M \\cap N) $  \nD.  $ M \\cup \\complement_U N $",
+        "block_order": 5
+      },
+      {
+        "block_label": "text",
+        "block_content": "3. 如图，网格纸上绘制的一个零件的三视图，网格小正方形的边长为 1，则该零件的表面积为（）",
+        "block_order": 6
+      },
+      {
+        "block_label": "image",
+        "block_content": "/images/img_in_image_box_108_645_237_754.jpg",
+        "block_order": null
+      },
+      {
+        "block_label": "image",
+        "block_content": "/images/img_in_image_box_252_646_381_752.jpg",
+        "block_order": null
+      },
+      {
+        "block_label": "image",
+        "block_content": "/images/img_in_image_box_108_768_237_878.jpg",
+        "block_order": null
+      },
+      {
+        "block_label": "text",
+        "block_content": "A. 24          B. 26          C. 28          D. 30",
+        "block_order": 7
+      },
+      {
+        "block_label": "text",
+        "block_content": "4. 已知  $ f(x)=\\frac{x\\mathrm{e}^{x}}{\\mathrm{e}^{ax}-1} $ 是偶函数，则  $ a= $ （）\n\nA.  $ -2 $\n\nB.  $ -1 $\n\nC. 1\n\nD. 2",
+        "block_order": 8
+      },
+      {
+        "block_label": "text",
+        "block_content": "5. 设 O 为平面坐标系的坐标原点，在区域  $ \\left\\{(x,y)\\mid1\\leq x^{2}+y^{2}\\leq4\\right\\} $ 内随机取一点，记该点为 A，则直线 OA 的倾斜角不大于  $ \\frac{\\pi}{4} $ 的概率为（ ）\n\nA.  $ \\frac{1}{8} $\n\nB.  $ \\frac{1}{6} $\n\nC.  $ \\frac{1}{4} $\n\nD.  $ \\frac{1}{2} $",
+        "block_order": 9
+      },
+      {
+        "block_label": "text",
+        "block_content": "6. 已知函数  $ f(x)=\\sin(\\omega x+\\varphi) $ 在区间  $ \\left(\\frac{\\pi}{6},\\frac{2\\pi}{3}\\right) $ 单调递增，直线  $ x=\\frac{\\pi}{6} $ 和  $ x=\\frac{2\\pi}{3} $ 为函数  $ y=f(x) $ 的图像的两条对称轴，则  $ f\\left(-\\frac{5\\pi}{12}\\right)= $ （ ）",
+        "block_order": 10
+      },
+      {
+        "block_label": "footer",
+        "block_content": "第一试卷网 Shijuan1.Com 提供下载",
+        "block_order": null
+      }
+    ]
+  },
+  {
+    "page_index": 1,
+    "blocks": [
+      {
+        "block_label": "text",
+        "block_content": "A.  $ -\\frac{\\sqrt{3}}{2} $ B.  $ -\\frac{1}{2} $ C.  $ \\frac{1}{2} $ D.  $ \\frac{\\sqrt{3}}{2} $",
+        "block_order": 1
+      },
+      {
+        "block_label": "text",
+        "block_content": "7. 甲乙两位同学从6种课外读物中各自选读2种，则这两人选读的课外读物中恰有1种相同的选法共有( )\nA. 30 种          B. 60 种          C. 120 种         D. 240 种",
+        "block_order": 2
+      },
+      {
+        "block_label": "text",
+        "block_content": "8. 已知圆锥 PO 的底面半径为  $ \\sqrt{3} $，O 为底面圆心，PA，PB 为圆锥的母线， $ \\angle AOB = 120^\\circ $，若  $ \\square PAB $ 的面积等于  $ \\frac{9\\sqrt{3}}{4} $，则该圆锥的体积为（ ）\n\nA.  $ \\pi $  \nB.  $ \\sqrt{6}\\pi $  \nC.  $ 3\\pi $  \nD.  $ 3\\sqrt{6}\\pi $",
+        "block_order": 3
+      },
+      {
+        "block_label": "text",
+        "block_content": "9. 已知  $ \\square ABC $ 为等腰直角三角形， $ AB $ 为斜边， $ \\triangle ABD $ 为等边三角形，若二面角  $ C-AB-D $ 为  $ 150^\\circ $，则直线  $ CD $ 与平面  $ ABC $ 所成角的正切值为（ ）\n\nA.  $ \\frac{1}{5} $  \nB.  $ \\frac{\\sqrt{2}}{5} $  \nC.  $ \\frac{\\sqrt{3}}{5} $  \nD.  $ \\frac{2}{5} $",
+        "block_order": 4
+      },
+      {
+        "block_label": "text",
+        "block_content": "10. 已知等差数列 $\\{a_n\\}$ 的公差为 $\\frac{2\\pi}{3}$，集合 $S = \\{\\cos a_n | n \\in \\mathbb{N}^*\\}$，若 $S = \\{a, b\\}$，则 $ab = (\\ )$\n\nA. $-1$\n\nB. $-\\frac{1}{2}$\n\nC. $0$\n\nD. $\\frac{1}{2}$",
+        "block_order": 5
+      },
+      {
+        "block_label": "text",
+        "block_content": "11. 设 A, B 为双曲线  $ x^{2}-\\frac{y^{2}}{9}=1 $ 上两点，下列四个点中，可为线段 AB 中点的是（）\nA. $ (1,1) $ B. $ \\left(-1,2\\right) $ C. $ (1,3) $ D. $ \\left(-1,-4\\right) $",
+        "block_order": 6
+      },
+      {
+        "block_label": "text",
+        "block_content": "12. 已知□ O 的半径为 1，直线 PA 与□ O 相切于点 A，直线 PB 与□ O 交于 B，C 两点，D 为 BC 的中点，若  $ \\left|PO\\right| = \\sqrt{2} $，则  $ \\overrightarrow{PA} \\cdot \\overrightarrow{PD} $ 的最大值为（ ）\n\nA.  $ \\frac{1+\\sqrt{2}}{2} $\n\nB.  $ \\frac{1+2\\sqrt{2}}{2} $\n\nC.  $ 1+\\sqrt{2} $\n\nD.  $ 2+\\sqrt{2} $",
+        "block_order": 7
+      },
+      {
+        "block_label": "paragraph_title",
+        "block_content": "二、填空题",
+        "block_order": 8
+      },
+      {
+        "block_label": "text",
+        "block_content": "13. 已知点  $ A(1,\\sqrt{5}) $ 在抛物线  $ C\\colon y^{2}=2px $ 上，则  $ A $ 到  $ C $ 的准线的距离为___.",
+        "block_order": 9
+      },
+      {
+        "block_label": "text",
+        "block_content": "14. 若 x, y 满足约束条件  $ \\begin{cases} x - 3y \\leq -1 \\\\ x + 2y \\leq 9 \\\\ 3x + y \\geq 7 \\end{cases} $，则 z = 2x - y 的最大值为 ___.",
+        "block_order": 10
+      },
+      {
+        "block_label": "text",
+        "block_content": "15. 已知  $ \\left\\{a_{n}\\right\\} $ 为等比数列，  $ a_{2}a_{4}a_{5}=a_{3}a_{6} $，  $ a_{9}a_{10}=-8 $，则  $ a_{7}= $ ___.",
+        "block_order": 11
+      },
+      {
+        "block_label": "text",
+        "block_content": "16. 设  $ a \\in (0,1) $，若函数  $ f(x) = a^x + (1+a)^x $ 在  $ (0,+\\infty) $ 上单调递增，则  $ a $ 取值范围是___。",
+        "block_order": 12
+      },
+      {
+        "block_label": "footer",
+        "block_content": "第一试卷网 Shijuan1.Com 提供下载",
+        "block_order": null
+      }
+    ]
+  },
+  {
+    "page_index": 2,
+    "blocks": [
+      {
+        "block_label": "paragraph_title",
+        "block_content": "三、解答题",
+        "block_order": 1
+      },
+      {
+        "block_label": "text",
+        "block_content": "17. 某厂为比较甲乙两种工艺对橡胶产品伸缩率处理效应，进行10次配对试验，每次配对试验选用材质相同的两个橡胶产品，随机地选其中一个用甲工艺处理，另一个用乙工艺处理，测量处理后的橡胶产品的伸缩率，甲、乙两种工艺处理后的橡胶产品的伸缩率分别记为 $ x_{i} $， $ y_{i} $（ $ i=1,2,\\cdots,10 $），试验结果如下",
+        "block_order": 2
+      },
+      {
+        "block_label": "table",
+        "block_content": "<table><tr><td>试验序号 $ i $</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td><td>9</td><td>10</td></tr><tr><td>伸缩率 $ x_{i} $</td><td>545</td><td>533</td><td>551</td><td>522</td><td>575</td><td>544</td><td>541</td><td>568</td><td>596</td><td>548</td></tr><tr><td>伸缩率 $ y_{i} $</td><td>536</td><td>527</td><td>543</td><td>530</td><td>560</td><td>533</td><td>522</td><td>550</td><td>576</td><td>536</td></tr></table>",
+        "block_order": null
+      },
+      {
+        "block_label": "text",
+        "block_content": "记  $ z_{i}=x_{i}-y_{i}(i=1,2,\\cdots,10) $，记  $ z_{1} $， $ z_{2} $，…， $ z_{10} $ 的样本平均数为  $ \\overline{z} $，样本方差为  $ s^{2} $，",
+        "block_order": 3
+      },
+      {
+        "block_label": "text",
+        "block_content": "(1) 求  $ \\overline{z} $， $ s^{2} $;",
+        "block_order": 4
+      },
+      {
+        "block_label": "text",
+        "block_content": "（2）判断甲工艺处理后的橡胶产品的伸缩率较乙工艺处理后的橡胶产品的伸缩率是否有显著提高（如果  $ \\overline{z} \\geq 2\\sqrt{\\frac{s^2}{10}} $，则认为甲工艺处理后的橡胶产品的伸缩率较乙工艺处理后的橡胶产品的伸缩率有显著提高，否则不认为有显著提高）。",
+        "block_order": 5
+      },
+      {
+        "block_label": "text",
+        "block_content": "18. 在□ABC中，已知∠BAC=120°，AB=2，AC=1。",
+        "block_order": 6
+      },
+      {
+        "block_label": "text",
+        "block_content": "(1) 求  $ \\sin \\angle ABC $;",
+        "block_order": 7
+      },
+      {
+        "block_label": "text",
+        "block_content": "（2）若 D 为 BC 上一点，且  $ \\angle BAD = 90^\\circ $，求  $ \\triangle ADC $ 的面积.",
+        "block_order": 8
+      },
+      {
+        "block_label": "text",
+        "block_content": "19. 如图，在三棱锥 P-ABC 中， $ AB \\perp BC $， $ AB = 2 $， $ BC = 2\\sqrt{2} $， $ PB = PC = \\sqrt{6} $，BP，AP，BC 的中点分别为 D，E，O， $ AD = \\sqrt{5}DO $，点 F 在 AC 上， $ BF \\perp AO $。",
+        "block_order": 9
+      },
+      {
+        "block_label": "image",
+        "block_content": "/images/img_in_image_box_111_1115_372_1325.jpg",
+        "block_order": null
+      },
+      {
+        "block_label": "text",
+        "block_content": "（1）证明：EF//平面ADO；",
+        "block_order": 10
+      },
+      {
+        "block_label": "text",
+        "block_content": "（2）证明：平面  $ ADO \\perp $ 平面 BEF;",
+        "block_order": 11
+      },
+      {
+        "block_label": "text",
+        "block_content": "（3）求二面角 D-AO-C 的正弦值.",
+        "block_order": 12
+      },
+      {
+        "block_label": "footer",
+        "block_content": "第一试卷网 Shijuan1.Com 提供下载",
+        "block_order": null
+      }
+    ]
+  },
+  {
+    "page_index": 3,
+    "blocks": [
+      {
+        "block_label": "text",
+        "block_content": "20. 已知椭圆 C:  $ \\frac{y^{2}}{a^{2}}+\\frac{x^{2}}{b^{2}}=1(a>b>0) $ 的离心率为  $ \\frac{\\sqrt{5}}{3} $，点  $ A(-2,0) $ 在 C 上.",
+        "block_order": 1
+      },
+      {
+        "block_label": "text",
+        "block_content": "(1) 求 C 的方程;",
+        "block_order": 2
+      },
+      {
+        "block_label": "text",
+        "block_content": "（2）过点 $ (-2,3) $的直线交C于点P，Q两点，直线AP，AQ与y轴的交点分别为M，N，证明：线段MN的中点为定点.",
+        "block_order": 3
+      },
+      {
+        "block_label": "text",
+        "block_content": "21. 已知函数  $ f(x)=\\left(\\frac{1}{x}+a\\right)\\ln(1+x) $.",
+        "block_order": 4
+      },
+      {
+        "block_label": "text",
+        "block_content": "（1）当a=-1时，求曲线 $ y=f(x) $在点 $ \\left(1,f(1)\\right) $处的切线方程；",
+        "block_order": 5
+      },
+      {
+        "block_label": "text",
+        "block_content": "（2）是否存在 a，b，使得曲线  $ y = f\\left(\\frac{1}{x}\\right) $ 关于直线 x = b 对称，若存在，求 a，b 的值，若不存在，说明理由.",
+        "block_order": 6
+      },
+      {
+        "block_label": "text",
+        "block_content": "（3）若  $ f(x) $ 在  $ (0, +\\infty) $ 存在极值，求 a 的取值范围.",
+        "block_order": 7
+      },
+      {
+        "block_label": "paragraph_title",
+        "block_content": "四、选做题",
+        "block_order": 8
+      },
+      {
+        "block_label": "paragraph_title",
+        "block_content": "【选修4-4】（10分）",
+        "block_order": 9
+      },
+      {
+        "block_label": "text",
+        "block_content": "22. 在直角坐标系 xOy 中，以坐标原点 O 为极点，x 轴正半轴为极轴建立极坐标系，曲线  $ C_1 $ 的极坐标方程为  $ \\rho = 2\\sin\\theta\\left(\\frac{\\pi}{4} \\leq \\theta \\leq \\frac{\\pi}{2}\\right) $，曲线  $ C_2 $： $ \\begin{cases} x = 2\\cos\\alpha \\\\ y = 2\\sin\\alpha \\end{cases} $（ $ \\alpha $ 为参数， $ \\frac{\\pi}{2} < \\alpha < \\pi $）.",
+        "block_order": 10
+      },
+      {
+        "block_label": "text",
+        "block_content": "(1) 写出  $ C_{1} $ 的直角坐标方程;",
+        "block_order": 11
+      },
+      {
+        "block_label": "text",
+        "block_content": "（2）若直线  $ y = x + m $ 既与  $ C_{1} $ 没有公共点，也与  $ C_{2} $ 没有公共点，求 m 的取值范围.",
+        "block_order": 12
+      },
+      {
+        "block_label": "paragraph_title",
+        "block_content": "【选修4-5】（10分）",
+        "block_order": 13
+      },
+      {
+        "block_label": "text",
+        "block_content": "23. 已知  $ f(x)=2|x|+|x-2| $.",
+        "block_order": 14
+      },
+      {
+        "block_label": "text",
+        "block_content": "（1）求不等式  $ f(x) \\leq 6 - x $ 解集；",
+        "block_order": 15
+      },
+      {
+        "block_label": "text",
+        "block_content": "（2）在直角坐标系 xOy 中，求不等式组  $ \\begin{cases} f(x) \\leq y \\\\ x + y - 6 \\leq 0 \\end{cases} $ 所确定的平面区域的面积.",
+        "block_order": 16
+      },
+      {
+        "block_label": "footer",
+        "block_content": "第一试卷网 Shijuan1.Com 提供下载",
+        "block_order": null
+      }
+    ]
+  },
+  {
+    "page_index": 4,
+    "blocks": [
+      {
+        "block_label": "footer",
+        "block_content": "第一试卷网 Shijuan1.Com 提供下载",
+        "block_order": null
+      }
+    ]
+  }
+]

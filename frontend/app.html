@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>智卷错题本系统</title>
+
+    <!-- 统一英文字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!--
+      外部 CDN 依赖说明 & 离线降级策略
+      ─────────────────────────────────
+      1. Google Fonts (Inter)  — 降级：系统 sans-serif 字体（body 已配置 fallback）
+      2. MathJax               — 降级：公式以原始 LaTeX 文本显示，不影响数据完整性
+      3. Font Awesome          — 降级：图标不显示，功能按钮仍可点击（文字标签兜底）
+      4. SortableJS            — 降级：拖拽排序不可用，手动排序仍可通过编辑实现
+      5. Chart.js              — 降级：Dashboard 图表区域不渲染，已有 guard 检查
+      如需离线部署，可将上述资源下载到 public/ 目录并替换引用路径。
+    -->
+
+    <!-- MathJax -->
+    <script>
+      MathJax = {
+        tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" referrerpolicy="no-referrer" />
+
+    <!-- SortableJS -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+
+    <!-- marked (Markdown 解析) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
+
+    <style>
+      body {
+        margin: 0;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      }
+    </style>
+    
+    <!-- 防白屏：提前执行主题检测 -->
+    <script>
+      if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    </script>
+  </head>
+  <body>
+    <!-- Vue 挂载点 -->
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

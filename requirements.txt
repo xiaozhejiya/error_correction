@@ -1,0 +1,48 @@
+# --- Agent 核心框架 ---
+deepagents==0.3.5
+langchain==1.2.3
+langchain-core==1.2.7
+langgraph==1.0.5
+langgraph-cli[inmem]==0.4.12
+
+# --- 模型提供商 / 适配器 ---
+langchain-deepseek==1.0.1
+langchain-openai==1.1.7
+openai==2.15.0
+
+# --- 工具 ---
+tavily==1.1.0
+langchain-tavily==0.2.16
+pytest==9.0.2
+
+# --- 工具函数 ---
+python-dotenv==1.2.1
+
+# --- 终端美化输出（可选）---
+rich==14.2.0
+
+# --- 图像处理 ---
+opencv-python>=4.8.0
+Pillow>=10.0.0
+pdf2image>=1.16.3
+numpy>=1.24.0
+
+# --- HTTP 请求 ---
+requests>=2.31.0
+
+# --- 进度条 ---
+tqdm>=4.65.0
+
+# --- 数据验证 ---
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# --- 数据库 ---
+sqlalchemy>=2.0
+
+# --- Web 框架 ---
+flask==3.1.2
+flask-cors==6.0.2
+werkzeug==3.1.5
+aiohttp>=3.9.0
+
