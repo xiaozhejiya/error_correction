@@ -45,7 +45,11 @@ def _ensure_default_question_project(db, user_id: int, name: str):
         .first()
     )
     if project:
-        return project
+        changed = False
+        if not project.is_default:
+            project.is_default = True
+            changed = True
+        return project, changed
 
     project = Project(
         user_id=user_id,
@@ -54,11 +58,11 @@ def _ensure_default_question_project(db, user_id: int, name: str):
         description="",
         color="#2563eb",
         icon="database",
-        is_default=False,
+        is_default=True,
     )
     db.add(project)
     db.flush()
-    return project
+    return project, True
 
 
 def _migrate_legacy_questions_for_user(db, user_id: int, project_id: int):
@@ -236,23 +240,26 @@ def migrate():
     with SessionLocal() as db:
         users = db.query(User).all()
         total_users = 0
+        total_created_or_updated = 0
         total_migrated = 0
         total_merged = 0
         project_name = "默认错题库"
 
         for user in users:
             total_users += 1
-            project = _ensure_default_question_project(db, user.id, project_name)
+            project, project_changed = _ensure_default_question_project(db, user.id, project_name)
+            if project_changed:
+                total_created_or_updated += 1
             migrated, merged = _migrate_legacy_questions_for_user(
                 db, user.id, project.id
             )
             total_migrated += migrated
             total_merged += merged
 
-        if total_migrated or total_merged:
+        if total_created_or_updated or total_migrated or total_merged:
             db.commit()
             print(
-                f"[migrate] 已迁移旧错题到项目“{project_name}”: 用户 {total_users}，迁移 {total_migrated}，合并去重 {total_merged}"
+                f"[migrate] 已确保默认错题库并迁移旧错题: 用户 {total_users}，默认库更新 {total_created_or_updated}，迁移 {total_migrated}，合并去重 {total_merged}"
             )
 
 
