@@ -60,7 +60,7 @@ const {
 const {
   currentView, currentSettingsSubView, setSettingsSubView,
   lastWorkspaceView, collapsedGroups, chatCollapsed,
-  sidebarMode, isMobile, mobileDrawerOpen, toggleSidebar, closeDrawer,
+  sidebarMode, isMobile, canHover, mobileDrawerOpen, toggleSidebar, closeDrawer,
   NAV_GROUPS, WORKSPACE_VIEWS, SETTINGS_NAV_ITEMS, navigateToHome,
 } = useWorkspaceNav()
 
@@ -286,7 +286,7 @@ onBeforeUnmount(() => {
       :chat-indicator-style="chatIndicatorStyle" :chat-indicator-transition="chatIndicatorTransition"
       :chat-menu-open-id="chatMenuOpenId" :renaming-chat-id="renamingChatId" :rename-text="renameText"
       :projects="projects" :active-project-id="sidebarActiveProjectId" :loading-projects="loadingProjects"
-      :user-menu-open="userMenuOpen" :sidebar-mode="sidebarMode" :is-mobile="isMobile"
+      :user-menu-open="userMenuOpen" :sidebar-mode="sidebarMode" :is-mobile="isMobile" :can-hover="canHover"
       :mobile-drawer-open="mobileDrawerOpen" @update:current-view="updateCurrentView"
       @update:current-settings-sub-view="updateCurrentSettingsSubView" @update:collapsed-groups="updateCollapsedGroups"
       @update:chat-collapsed="updateChatCollapsed" @update:user-menu-open="updateUserMenuOpen"
@@ -294,10 +294,9 @@ onBeforeUnmount(() => {
       @update:renaming-chat-id="updateRenamingChatId" @update:nav-ref="updateNavRef"
       @update:chat-list-ref="updateChatListRef" @navigate-home="navigateToHome" @logout="handleLogout"
       @toggle-theme="toggleTheme" @select-project="setActiveProject" @create-project="openProjectDialog"
-      @rename-project="openRenameProjectDialog" @delete-project="handleDeleteProject"
-      @create-ai-chat="createAiChat" @select-ai-chat="selectAiChat"
-      @start-rename-chat="startRenameChat" @confirm-rename-chat="confirmRenameChat" @delete-ai-chat="deleteAiChat"
-      @toggle-chat-menu="toggleChatMenu" @toggle-sidebar="toggleSidebar" />
+      @rename-project="openRenameProjectDialog" @delete-project="handleDeleteProject" @create-ai-chat="createAiChat"
+      @select-ai-chat="selectAiChat" @start-rename-chat="startRenameChat" @confirm-rename-chat="confirmRenameChat"
+      @delete-ai-chat="deleteAiChat" @toggle-chat-menu="toggleChatMenu" @toggle-sidebar="toggleSidebar" />
 
     <!-- ================== 右侧整体区域 ================== -->
     <div
@@ -343,8 +342,7 @@ onBeforeUnmount(() => {
         @update:open="(v) => answerModalOpen = v" @update:text="(v) => answerModalText = v"
         @confirm="saveAnswerAndChat" />
       <BaseModal :open="projectDialogOpen" :title="projectDialogTitle" icon="fa-folder-plus" iconBg="accent-bg-soft"
-        iconClass="accent-text" maxWidth="max-w-[28rem]" bodyClass="px-6 pb-3 pt-1"
-        @close="closeProjectDialog">
+        iconClass="accent-text" maxWidth="max-w-[28rem]" bodyClass="px-6 pb-3 pt-1" @close="closeProjectDialog">
         <form class="space-y-4" @submit.prevent="handleCreateProject">
           <BaseInput v-model="projectDialogName" label="名称" :placeholder="projectDialogPlaceholder" maxlength="100"
             data-project-name-input />
@@ -359,12 +357,13 @@ onBeforeUnmount(() => {
           </BaseButton>
         </template>
       </BaseModal>
-      <BaseModal :open="deleteProjectDialogOpen" title="删除项目" icon="fa-trash"
-        iconBg="bg-rose-50 dark:bg-rose-500/10" iconClass="text-rose-600 dark:text-rose-300"
-        maxWidth="max-w-[28rem]" bodyClass="px-6 pb-3 pt-1" @close="closeDeleteProjectDialog">
+      <BaseModal :open="deleteProjectDialogOpen" title="删除项目" icon="fa-trash" iconBg="bg-rose-50 dark:bg-rose-500/10"
+        iconClass="text-rose-600 dark:text-rose-300" maxWidth="max-w-[28rem]" bodyClass="px-6 pb-3 pt-1"
+        @close="closeDeleteProjectDialog">
         <div class="space-y-3 text-sm text-slate-600 dark:text-[#aeb6c2]">
           <p>
-            确定删除“<span class="font-semibold text-slate-900 dark:text-[#f7f8f8]">{{ deleteProjectTarget?.name }}</span>”吗？
+            确定删除“<span class="font-semibold text-slate-900 dark:text-[#f7f8f8]">{{ deleteProjectTarget?.name
+              }}</span>”吗？
           </p>
           <p class="text-xs text-slate-400 dark:text-[#737b86]">
             默认项目不能删除；已有内容的项目会被系统阻止删除。

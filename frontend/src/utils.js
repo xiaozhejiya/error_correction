@@ -51,11 +51,57 @@ export const getQuestionSnippet = (q, maxLen = 0, fallback = '') => {
   return raw
 }
 
+const protectMathMarkdown = (text) => {
+  const placeholders = []
+  if (!text) return { text: '', restore: (html) => html }
+  const codePlaceholders = []
+  const stashCode = (match) => {
+    const key = `@@CODE_${codePlaceholders.length}@@`
+    codePlaceholders.push(match)
+    return key
+  }
+
+  let s = String(text)
+  s = s
+    .replace(/```[\s\S]*?```/g, stashCode)
+    .replace(/`[^`\n]+`/g, stashCode)
+
+  s = s
+    .replace(/\\\[((?:.|\n)*?)\\\]/g, (_, content) => `$$${content}$$`)
+    .replace(/\\\(((?:.|\n)*?)\\\)/g, (_, content) => `$${content}$`)
+
+  const stash = (match) => {
+    const key = `@@MATH_${placeholders.length}@@`
+    placeholders.push(match)
+    return key
+  }
+
+  s = s
+    .replace(/\$\$[\s\S]*?\$\$/g, stash)
+    .replace(/\$(?!\$)[\s\S]*?(?<!\$)\$/g, stash)
+
+  // Some LLM replies contain bare LaTeX commands, for example "\overline{z}".
+  // Wrap those small math fragments so MathJax can process them while streaming.
+  s = s.replace(/(?<![A-Za-z0-9:\\\\/])\\(?:frac|sqrt|overline|bar|hat|vec|angle|triangle|pi|cdot|times|leq|geq|neq|approx|sum|int|Delta|alpha|beta|gamma|theta|lambda|mu|sigma|omega)(?:\s*\{[^{}\n]*\}){0,2}(?:\s*[_^]\s*\{?[\w+\-=]+\}?){0,2}/g, (match) => `$${match}$`)
+
+  s = s
+    .replace(/\$\$[\s\S]*?\$\$/g, stash)
+    .replace(/\$(?!\$)[\s\S]*?(?<!\$)\$/g, stash)
+
+  s = s.replace(/@@CODE_(\d+)@@/g, (_, index) => codePlaceholders[Number(index)] || '')
+
+  return {
+    text: s,
+    restore: (html) => html.replace(/@@MATH_(\d+)@@/g, (_, index) => placeholders[Number(index)] || ''),
+  }
+}
+
 /** 将 Markdown 文本渲染为净化后的 HTML（用于聊天消息） */
 export const renderMarkdown = (text) => {
   if (!text) return ''
   const parse = window.marked?.parse ?? ((s) => s)
-  const html = parse(text, { breaks: true })
+  const math = protectMathMarkdown(text)
+  const html = math.restore(parse(math.text, { breaks: true }))
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: [
       ...ALLOWED_HTML_TAGS,

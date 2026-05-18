@@ -7,7 +7,14 @@ from flask import Blueprint, request, jsonify, session, Response
 
 from db import SessionLocal
 from db import crud
-from db.models import Question, ChatSession as ChatSessionModel, QuestionTagMapping
+from db.models import (
+    Note,
+    NoteTagMapping,
+    Project,
+    Question,
+    ChatSession as ChatSessionModel,
+    QuestionTagMapping,
+)
 from core.model_selection import LLMSelectionError, resolve_llm_selection
 from core.quota import (
     consume_daily_free_quota,
@@ -63,6 +70,134 @@ def _serialize_question(q: Question) -> dict:
         "knowledge_tags": knowledge_tags,
         "created_at": q.created_at.isoformat() if q.created_at else None,
     }
+
+
+def _text_from_question(q: Question) -> str:
+    parts = []
+    if q.question_type:
+        parts.append(f"题型：{q.question_type}")
+    if q.batch and q.batch.subject:
+        parts.append(f"科目：{q.batch.subject}")
+    tags = [m.tag.tag_name for m in (q.tags or []) if m.tag]
+    if tags:
+        parts.append(f"知识点：{', '.join(tags)}")
+    try:
+        content_blocks = json.loads(q.content_json) if q.content_json else []
+    except Exception:
+        content_blocks = []
+    for block in content_blocks:
+        if isinstance(block, dict) and block.get("block_type") == "text":
+            text = (block.get("content") or "").strip()
+            if text:
+                parts.append(text)
+    try:
+        options = json.loads(q.options_json) if q.options_json else []
+    except Exception:
+        options = []
+    if isinstance(options, list) and options:
+        parts.append("选项：" + "；".join(str(opt) for opt in options if opt))
+    if q.answer:
+        parts.append(f"答案：{q.answer}")
+    if q.user_answer:
+        parts.append(f"我的笔记/作答：{q.user_answer}")
+    return "\n".join(parts)
+
+
+def _text_from_note(note: Note) -> str:
+    parts = [f"标题：{note.title}"]
+    if note.subject:
+        parts.append(f"科目：{note.subject}")
+    tags = [m.tag.tag_name for m in (note.tags or []) if m.tag]
+    if tags:
+        parts.append(f"知识点：{', '.join(tags)}")
+    content = (note.content_markdown or note.ocr_text or "").strip()
+    if content:
+        parts.append(content)
+    return "\n".join(parts)
+
+
+def _build_project_context(
+    db, refs, user_id=None, max_items=20, max_chars=12000
+) -> str:
+    from sqlalchemy.orm import selectinload
+
+    if not refs:
+        return ""
+    sections = []
+    used = 0
+
+    for ref in refs[:3]:
+        if not isinstance(ref, dict):
+            continue
+        project_type = "note" if ref.get("type") == "note" else "question"
+        try:
+            project_id = int(ref.get("project_id"))
+        except (TypeError, ValueError):
+            continue
+
+        project_query = db.query(Project).filter(
+            Project.id == project_id,
+            Project.project_type == project_type,
+        )
+        if user_id is not None:
+            project_query = project_query.filter(Project.user_id == user_id)
+        project = project_query.first()
+        if not project:
+            continue
+
+        section_lines = [
+            f"## 引用{ '笔记本' if project_type == 'note' else '错题库' }：{project.name}"
+        ]
+        if project_type == "note":
+            rows = (
+                db.query(Note)
+                .options(selectinload(Note.tags).selectinload(NoteTagMapping.tag))
+                .filter(Note.project_id == project.id)
+                .order_by(Note.updated_at.desc(), Note.created_at.desc())
+                .limit(max_items)
+                .all()
+            )
+            for idx, note in enumerate(rows, 1):
+                section_lines.append(f"\n### 笔记 {idx}")
+                section_lines.append(_text_from_note(note))
+        else:
+            question_ids = []
+            raw_ids = ref.get("question_ids") or []
+            if isinstance(raw_ids, list):
+                for raw_id in raw_ids[:max_items]:
+                    try:
+                        question_ids.append(int(raw_id))
+                    except (TypeError, ValueError):
+                        continue
+            if not question_ids:
+                continue
+
+            question_query = (
+                db.query(Question)
+                .options(
+                    selectinload(Question.batch),
+                    selectinload(Question.tags).selectinload(QuestionTagMapping.tag),
+                )
+                .filter(Question.project_id == project.id)
+            )
+            question_query = question_query.filter(Question.id.in_(question_ids))
+            rows = question_query.all()
+            order = {question_id: idx for idx, question_id in enumerate(question_ids)}
+            rows = sorted(rows, key=lambda question: order.get(question.id, len(order)))
+            for idx, question in enumerate(rows, 1):
+                section_lines.append(f"\n### 错题 {idx}")
+                section_lines.append(_text_from_question(question))
+
+        section = "\n".join(line for line in section_lines if line)
+        remaining = max_chars - used
+        if remaining <= 0:
+            break
+        if len(section) > remaining:
+            section = section[:remaining] + "\n...（引用内容已截断）"
+        sections.append(section)
+        used += len(section)
+
+    return "\n\n".join(sections)
 
 
 @bp.route("/question/<int:question_id>/chats", methods=["GET"])
@@ -266,6 +401,7 @@ def stream_chat(session_id):
         provider_source = data.get("provider_source") or None
         provider_id = data.get("provider_id") or None
         deep_think = data.get("deep_think", False)
+        context_refs = data.get("context_refs") or []
 
         # 深度思考模式：切换到 reasoner 模型
         if deep_think and model_provider == "openai":
@@ -329,6 +465,11 @@ def stream_chat(session_id):
             # 独立对话或题目绑定对话
             question = chat_session.question
             q_data = _serialize_question(question) if question else None
+            context_prompt = _build_project_context(
+                db,
+                context_refs,
+                user_id=uid,
+            )
 
             # 加载历史消息（最近 20 条）
             history_result = crud.get_chat_messages(db, chat_session.id, limit=20)
@@ -351,6 +492,7 @@ def stream_chat(session_id):
                     messages=history,
                     provider=model_provider,
                     model_name=selection["model_name"],
+                    context_prompt=context_prompt,
                 ):
                     # stream_teach 现在 yield dict: {"type": "reasoning"|"content", "content": "..."}
                     if isinstance(chunk, dict):

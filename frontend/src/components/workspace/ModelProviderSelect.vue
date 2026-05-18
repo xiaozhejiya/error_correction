@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   Listbox,
   ListboxButton,
@@ -20,19 +21,20 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 const { pushToast } = useToast()
+const router = useRouter()
 
 const modelLogos = { openai: deepseekLogo, anthropic: ernieLogo }
 const checking = ref(false)
-const activeSource = ref('')
 
 const options = computed(() => props.modelOptionsData?.options || [])
+const sourceLabelMap = { system: '平台托管', personal: '自己设置' }
 
 const sourceGroups = computed(() => {
   const groups = props.modelOptionsData?.groups || []
   return groups
     .map((group) => ({
       key: group.key,
-      label: group.key === 'personal' ? '我的 Provider' : group.label,
+      label: sourceLabelMap[group.key] || group.label,
       count: options.value.filter((option) => option.source === group.key).length,
     }))
     .filter((group) => group.count > 0)
@@ -43,7 +45,6 @@ const groupedOptions = computed(() => {
   const items = []
 
   for (const group of groups) {
-    if (activeSource.value && group.key !== activeSource.value) continue
     const groupOptions = options.value.filter((option) => option.source === group.key)
     if (!groupOptions.length) continue
 
@@ -72,7 +73,7 @@ const currentOption = computed(() => {
 })
 
 const currentSourceLabel = computed(() => {
-  const source = currentOption.value?.source || activeSource.value
+  const source = currentOption.value?.source || ''
   const group = sourceGroups.value.find((item) => item.key === source)
   return group?.label || ''
 })
@@ -93,15 +94,12 @@ const selectModel = (value) => {
   emit('update:modelValue', value)
 }
 
-const selectSource = (source) => {
-  activeSource.value = source
+const goToApiSettings = () => {
+  router.push('/app/settings/api')
 }
 
 watch(() => props.modelValue, () => {
   if (!props.modelValue) return
-  if (currentOption.value?.source) {
-    activeSource.value = currentOption.value.source
-  }
   checking.value = true
   pushToast?.('info', '正在检查模型状态...', 1000)
 
@@ -117,15 +115,6 @@ watch(() => props.modelValue, () => {
   }, 700)
 })
 
-watch(sourceGroups, (groups) => {
-  if (!groups.length) {
-    activeSource.value = ''
-    return
-  }
-  if (!groups.some((group) => group.key === activeSource.value)) {
-    activeSource.value = currentOption.value?.source || groups[0].key
-  }
-}, { immediate: true })
 </script>
 
 <template>
@@ -205,29 +194,11 @@ watch(sourceGroups, (groups) => {
         <ListboxOptions
           class="absolute right-0 z-50 mt-2 max-h-72 w-full overflow-hidden rounded-lg border border-gray-200 bg-white p-1 text-sm shadow-xl shadow-black/10 outline-none dark:border-white/[0.08] dark:bg-[#151617] dark:shadow-black/30"
         >
-          <div
-            v-if="sourceGroups.length > 1"
-            class="mb-1 grid grid-cols-2 gap-1 rounded-md bg-gray-100 p-1 dark:bg-white/[0.04]"
-          >
-            <button
-              v-for="source in sourceGroups"
-              :key="source.key"
-              type="button"
-              class="rounded px-2 py-1.5 text-xs font-semibold transition-colors"
-              :class="activeSource === source.key
-                ? 'bg-white text-gray-950 shadow-sm dark:bg-white/[0.08] dark:text-[#f7f8f8]'
-                : 'text-gray-500 hover:text-gray-800 dark:text-[#777b84] dark:hover:text-[#d0d6e0]'"
-              @click.stop="selectSource(source.key)"
-            >
-              {{ source.label }}
-            </button>
-          </div>
-
           <template v-for="(item, index) in groupedOptions" :key="item.type === 'group' ? item.key : item.optionId">
             <li
               v-if="item.type === 'group'"
-              class="select-none px-3 py-1.5 text-[11px] font-medium text-gray-500 dark:text-[#777b84]"
-              :class="index > 0 ? 'mt-1 border-t border-gray-100 pt-2 dark:border-white/[0.06]' : ''"
+              class="select-none px-3 py-2 text-[11px] font-semibold text-gray-500 dark:text-[#777b84]"
+              :class="index > 0 ? 'mt-1 border-t border-gray-100 pt-2.5 dark:border-white/[0.06]' : ''"
             >
               {{ item.label }}
             </li>
@@ -271,6 +242,17 @@ watch(sourceGroups, (groups) => {
               </li>
             </ListboxOption>
           </template>
+
+          <div class="mt-1 border-t border-gray-100 p-1 pt-1.5 dark:border-white/[0.06]">
+            <button
+              type="button"
+              class="flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-[#8a8f98] dark:hover:bg-white/[0.045] dark:hover:text-[#f7f8f8]"
+              @click.stop="goToApiSettings"
+            >
+              <i class="fa-solid fa-plug-circle-bolt text-[11px]"></i>
+              <span>API 设置</span>
+            </button>
+          </div>
         </ListboxOptions>
       </Transition>
     </div>

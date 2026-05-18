@@ -259,7 +259,8 @@ function goToWorkspace() {
         <i class="fa-solid fa-plus text-[10px]"></i> 录入
       </button>
     </template>
-    <div class="relative h-full overflow-y-auto custom-scrollbar flex flex-col">
+    <div class="relative h-full flex flex-col"
+      :class="selectedNote ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar'">
       <div class="relative z-10 flex-1 flex flex-col">
 
         <!-- List View -->
@@ -311,23 +312,32 @@ function goToWorkspace() {
               </BaseButton>
             </EmptyState>
 
-            <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div v-else class="space-y-4">
               <BaseCard v-for="note in notes" :key="note.id" @click="openNote(note)" class="group cursor-pointer"
                 padding="p-4">
-                <h3 class="mb-2 text-sm font-medium text-gray-900 dark:text-[#f7f8f8] line-clamp-2">{{ note.title }}
-                </h3>
-                <p class="mb-3 text-xs text-gray-500 dark:text-[#8a8f98] line-clamp-3">
-                  {{ getNotePreviewText(note.content_markdown) }}
-                </p>
-                <div class="flex flex-wrap items-center gap-2">
-                  <span v-if="note.subject"
-                    class="rounded-md accent-bg-soft px-2 py-0.5 text-xs font-medium accent-text">{{
-                      note.subject }}</span>
-                  <span v-for="tag in (note.knowledge_tags || []).slice(0, 3)" :key="tag"
-                    class="rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-500 dark:border-white/[0.06] dark:text-[#8a8f98]">{{
-                      tag }}</span>
-                  <span class="ml-auto text-xs text-gray-400 dark:text-[#62666d]">{{ note.updated_at?.slice(0, 10)
-                  }}</span>
+                <div class="flex min-w-0 items-start gap-4">
+                  <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg accent-bg-soft accent-text">
+                    <i class="fa-solid fa-book-open text-sm"></i>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <div class="mb-2 flex min-w-0 items-start justify-between gap-4">
+                      <h3 class="min-w-0 truncate text-sm font-semibold text-gray-900 dark:text-[#f7f8f8]">{{ note.title }}
+                      </h3>
+                      <span class="shrink-0 text-xs text-gray-400 dark:text-[#62666d]">{{ note.updated_at?.slice(0, 10)
+                      }}</span>
+                    </div>
+                    <p class="text-sm leading-relaxed text-gray-600 dark:text-[#8a8f98] line-clamp-2">
+                      {{ getNotePreviewText(note.content_markdown, 180) }}
+                    </p>
+                    <div class="mt-3 flex flex-wrap items-center gap-2">
+                      <span v-if="note.subject"
+                        class="rounded-md accent-bg-soft px-2 py-0.5 text-xs font-medium accent-text">{{
+                          note.subject }}</span>
+                      <span v-for="tag in (note.knowledge_tags || []).slice(0, 5)" :key="tag"
+                        class="rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-500 dark:border-white/[0.06] dark:text-[#8a8f98]">{{
+                          tag }}</span>
+                    </div>
+                  </div>
                 </div>
               </BaseCard>
             </div>
@@ -374,9 +384,9 @@ function goToWorkspace() {
                 tag }}</span>
           </div>
 
-          <BaseCard padding="p-8">
-            <!-- Edit Mode -->
-            <div v-if="editing" class="space-y-4">
+          <!-- Edit Mode -->
+          <BaseCard v-if="editing" padding="p-8">
+            <div class="space-y-4">
               <div>
                 <label class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500">标题</label>
                 <input v-model="editTitle"
@@ -395,28 +405,35 @@ function goToWorkspace() {
                 <BaseGhostButton @click="cancelEdit">取消</BaseGhostButton>
               </div>
             </div>
-
-            <!-- View Mode -->
-            <div v-else ref="noteContentRef">
-              <article
-                class="prose prose-slate max-w-none dark:prose-invert prose-headings:text-slate-900 dark:prose-headings:text-white prose-p:leading-relaxed prose-a:text-emerald-600 prose-pre:bg-slate-50 dark:prose-pre:bg-slate-900 prose-pre:border prose-pre:border-slate-200/60 dark:prose-pre:border-white/10"
-                v-html="renderMarkdown(selectedNote.content_markdown || '')"></article>
-            </div>
           </BaseCard>
 
-          <!-- Original Images -->
-          <div v-if="selectedNote.source_images?.length && !editing" class="mt-8">
-            <h3 class="mb-4 text-sm font-black uppercase tracking-widest text-slate-500">
-              <i class="fa-solid fa-image mr-2"></i>原始笔记图片
-            </h3>
-            <div class="grid gap-4 sm:grid-cols-2">
-              <BaseCard v-for="(src, idx) in selectedNote.source_images" :key="idx" padding="p-2"
-                class="overflow-hidden">
-                <img :src="'/uploads/' + src.split(/[\\/]/).pop()"
-                  class="w-full rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
+          <!-- View Mode -->
+          <div v-else class="grid min-h-0 flex-1 gap-4 overflow-hidden xl:grid-cols-[minmax(20rem,0.42fr)_minmax(0,1fr)]">
+            <section class="flex min-h-0 flex-col overflow-hidden">
+              <div class="mb-3 flex items-center justify-between">
+                <h3 class="text-sm font-bold text-gray-900 dark:text-[#f7f8f8]">
+                  <i class="fa-solid fa-image mr-2 text-xs text-gray-400 dark:text-[#62666d]"></i>原始笔记图片
+                </h3>
+                <span class="text-xs text-gray-400 dark:text-[#62666d]">{{ selectedNote.source_images?.length || 0 }} 张</span>
+              </div>
+              <div v-if="selectedNote.source_images?.length" class="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1 custom-scrollbar">
+                <img v-for="(src, idx) in selectedNote.source_images" :key="idx"
+                  :src="'/uploads/' + src.split(/[\\/]/).pop()"
+                  class="w-full rounded-xl object-contain transition-opacity hover:opacity-90"
                   @error="$event.target.style.display = 'none'" />
-              </BaseCard>
-            </div>
+              </div>
+              <div v-else class="flex min-h-64 items-center justify-center rounded-xl border border-dashed border-gray-200 text-sm text-gray-400 dark:border-white/[0.08] dark:text-[#62666d]">
+                暂无原始图片
+              </div>
+            </section>
+
+            <section class="min-w-0 min-h-0 overflow-hidden">
+              <div ref="noteContentRef" class="h-full overflow-y-auto pr-2 custom-scrollbar">
+                <article
+                  class="prose prose-slate max-w-none dark:prose-invert prose-headings:text-slate-900 dark:prose-headings:text-white prose-p:leading-relaxed prose-a:text-emerald-600 prose-pre:bg-slate-50 dark:prose-pre:bg-slate-900 prose-pre:border prose-pre:border-slate-200/60 dark:prose-pre:border-white/10"
+                  v-html="renderMarkdown(selectedNote.content_markdown || '')"></article>
+              </div>
+            </section>
           </div>
         </div>
       </div>

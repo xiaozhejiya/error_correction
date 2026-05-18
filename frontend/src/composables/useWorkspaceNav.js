@@ -47,6 +47,7 @@ const lastWorkspaceView = ref('workspace')
 
 // 响应式状态
 const isMobile = ref(false)
+const canHover = ref(true)
 const sidebarMode = ref('expanded') // 'expanded' | 'collapsed-icon' (仅大屏)
 const mobileDrawerOpen = ref(false) // (仅小屏)
 
@@ -60,6 +61,7 @@ const checkMobile = () => {
         mobileDrawerOpen.value = false
       }
     }
+    canHover.value = window.matchMedia('(hover: hover)').matches
   }
 }
 
@@ -153,7 +155,7 @@ export function useWorkspaceNav() {
   return {
     currentView, currentSettingsSubView, setSettingsSubView,
     lastWorkspaceView, collapsedGroups, chatCollapsed,
-    sidebarMode, isMobile, mobileDrawerOpen, toggleSidebar, closeDrawer,
+    sidebarMode, isMobile, canHover, mobileDrawerOpen, toggleSidebar, closeDrawer,
     NAV_GROUPS, WORKSPACE_VIEWS, SETTINGS_NAV_ITEMS, navigateToHome,
   }
 }

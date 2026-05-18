@@ -23,7 +23,10 @@
     <!-- MathJax -->
     <script>
       MathJax = {
-        tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          displayMath: [['$$', '$$'], ['\\[', '\\]']]
+        },
         svg: { fontCache: 'global' }
       };
     </script>

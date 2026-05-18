@@ -401,11 +401,11 @@ export async function fetchMessages(sessionId, { limit = 30, beforeId } = {}) {
   return { messages: data.messages, hasMore: data.hasMore }
 }
 
-export async function streamChat(sessionId, message, modelProvider = 'openai', signal, modelName, { deepThink = false, providerSource, providerId } = {}) {
+export async function streamChat(sessionId, message, modelProvider = 'openai', signal, modelName, { deepThink = false, providerSource, providerId, contextRefs = [] } = {}) {
   const opts = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(_buildModelBody(modelProvider, modelName, providerSource, providerId, { message, deep_think: deepThink })),
+    body: JSON.stringify(_buildModelBody(modelProvider, modelName, providerSource, providerId, { message, deep_think: deepThink, context_refs: contextRefs })),
   }
   if (signal) opts.signal = signal
   return fetch(`/api/chat/${sessionId}/stream`, opts)

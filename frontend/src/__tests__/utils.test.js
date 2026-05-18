@@ -3,7 +3,7 @@
  * 对应后端 tests/test_utils.py 的测试风格
  */
 import { describe, it, expect } from 'vitest'
-import { fileKey, formatOption, isHtml, sanitizeHtml, clampScale } from '../utils.js'
+import { fileKey, formatOption, isHtml, sanitizeHtml, clampScale, renderMarkdown } from '../utils.js'
 
 describe('fileKey', () => {
   it('根据文件名、大小、修改时间生成唯一标识', () => {
@@ -165,5 +165,27 @@ describe('clampScale', () => {
   it('支持自定义范围', () => {
     const result = clampScale(0.5, -100, 0.1, 2)
     expect(result).toBeCloseTo(0.6, 5)
+  })
+})
+
+describe('renderMarkdown', () => {
+  it('不会将代码块中的 LaTeX 命令包装成数学公式', () => {
+    window.marked = { parse: (s) => s }
+    const input = '```js\nconst p = \"C:\\\\alpha\\\\beta\";\nconst t = \"\\\\alpha\";\n```'
+    const result = renderMarkdown(input)
+    expect(result).toContain('\\\\alpha')
+    expect(result).not.toContain('$\\\\alpha$')
+  })
+
+  it('会包装普通文本中的 LaTeX 命令，但不会误伤 Windows 路径片段', () => {
+    window.marked = { parse: (s) => s }
+    const text = '令 \\alpha = 1'
+    const path = '路径 C:\\\\alpha\\\\beta'
+    const resultText = renderMarkdown(text)
+    const resultPath = renderMarkdown(path)
+    expect(resultText).toContain('$')
+    expect(JSON.stringify(resultText)).toContain('\\\\alpha')
+    expect(resultPath).not.toContain('$\\\\alpha$')
+    expect(resultPath).not.toContain('$\\\\beta$')
   })
 })

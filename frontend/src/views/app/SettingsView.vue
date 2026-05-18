@@ -889,9 +889,10 @@ watch(
                 <p class="mt-2 text-2xl font-bold text-slate-900 dark:text-[#f7f8f8]">{{ quota?.daily_free_used ?? '--'
                   }}</p>
               </div>
-              <div class="rounded-xl border border-slate-900 bg-slate-900 p-4 dark:border-[#f7f8f8] dark:bg-[#f7f8f8]">
-                <p class="text-xs font-medium text-white/70 dark:text-black/50">今日剩余</p>
-                <p class="mt-2 text-2xl font-bold text-white dark:text-black">{{ quota?.remaining ?? '--' }}</p>
+              <div
+                class="rounded-xl border border-[rgb(var(--accent-rgb)/0.24)] bg-[rgb(var(--accent-rgb)/0.10)] p-4 dark:border-[rgb(var(--accent-rgb)/0.28)] dark:bg-[rgb(var(--accent-rgb)/0.12)]">
+                <p class="text-xs font-medium text-slate-500 dark:text-slate-400">今日剩余</p>
+                <p class="mt-2 text-2xl font-bold accent-text">{{ quota?.remaining ?? '--' }}</p>
               </div>
             </div>
 

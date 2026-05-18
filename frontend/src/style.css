@@ -286,6 +286,12 @@ mjx-container[jax="SVG"][display="true"] {
   margin: 1rem 0;
 }
 
+html.dark mjx-container.MathJax[jax="SVG"][display="true"] {
+  border: 1px solid #4b4747bf !important;
+  border-radius: 0.75rem !important;
+  background: #43434347 !important;
+}
+
 mjx-container[jax="SVG"]>svg {
   display: inline;
 }

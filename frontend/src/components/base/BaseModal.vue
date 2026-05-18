@@ -89,7 +89,7 @@ const contentStyle = computed(() => ({
           </div>
           
           <!-- 底部操作区（可选） -->
-          <div v-if="$slots.footer" class="rounded-b-2xl px-6 pb-5 pt-2 flex justify-end gap-2">
+          <div v-if="$slots.footer" class="rounded-b-2xl border-t border-slate-200/60 px-6 pb-5 pt-2 flex justify-end gap-2 dark:border-[#2f3336]">
             <slot name="footer" />
           </div>
         </div>

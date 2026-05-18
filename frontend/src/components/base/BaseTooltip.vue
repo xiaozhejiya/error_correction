@@ -74,14 +74,22 @@ const updatePosition = async () => {
   position.value = { left, top }
 }
 
+const isTouch = ref(false)
+
 const show = async () => {
-  if (props.disabled) return
+  if (props.disabled || isTouch.value) return
+  // 如果设备不支持 hover（如移动端），则不显示 tooltip，防止点击后残留
+  if (typeof window !== 'undefined' && !window.matchMedia('(hover: hover)').matches) return
   visible.value = true
   await updatePosition()
 }
 
 const hide = () => {
   visible.value = false
+}
+
+const handleTouchStart = () => {
+  isTouch.value = true
 }
 
 const onViewportChange = () => {
@@ -91,12 +99,14 @@ const onViewportChange = () => {
 if (typeof window !== 'undefined') {
   window.addEventListener('resize', onViewportChange)
   window.addEventListener('scroll', onViewportChange, true)
+  window.addEventListener('touchstart', handleTouchStart, { passive: true })
 }
 
 onBeforeUnmount(() => {
   if (typeof window !== 'undefined') {
     window.removeEventListener('resize', onViewportChange)
     window.removeEventListener('scroll', onViewportChange, true)
+    window.removeEventListener('touchstart', handleTouchStart)
   }
 })
 </script>
