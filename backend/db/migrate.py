@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from werkzeug.security import generate_password_hash
 from core.config import settings
-from db import engine, SessionLocal
+from db import engine, SessionLocal, ensure_pgvector_extension, is_postgresql_backend
 from db.models import Base
 from db import crud
 
@@ -173,6 +173,7 @@ def _migrate_legacy_questions_for_user(db, user_id: int, project_id: int):
 
 def migrate():
     """增量迁移：仅创建缺失的表，并确保 Admin 用户存在。每次启动自动调用，安全幂等。"""
+    ensure_pgvector_extension(engine)
     Base.metadata.create_all(bind=engine)  # checkfirst=True by default，已存在的表不动
 
     # 增量列迁移（新增字段时在此追加）
@@ -198,6 +199,28 @@ def migrate():
         _add_column_if_missing(conn, "chat_sessions", "public_id", "TEXT")
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_public_id_unique ON projects(public_id)"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_sessions_public_id_unique ON chat_sessions(public_id)"))
+        if is_postgresql_backend(engine):
+            vector_dim = settings.postgres_vector_dimensions
+            conn.execute(
+                text(
+                    f"ALTER TABLE rag_document_chunks "
+                    f"ADD COLUMN IF NOT EXISTS embedding_vector vector({vector_dim})"
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS idx_rag_document_chunks_source_user_project "
+                    "ON rag_document_chunks(source_type, user_id, project_id)"
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS idx_rag_document_chunks_embedding_vector "
+                    "ON rag_document_chunks "
+                    "USING ivfflat (embedding_vector vector_cosine_ops) "
+                    "WITH (lists = 100)"
+                )
+            )
         conn.commit()
 
     # 回填 projects/chat_sessions.public_id（历史数据兼容）

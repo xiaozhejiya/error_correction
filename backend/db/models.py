@@ -302,6 +302,29 @@ class NoteTagMapping(Base):
     tag = relationship("KnowledgeTag")
 
 
+class RagDocumentChunk(Base):
+    """RAG 文档切块（统一索引表，第一期仅索引错题）"""
+    __tablename__ = "rag_document_chunks"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
+    source_type = Column(String(20), nullable=False, index=True)   # "question"
+    source_id = Column(Integer, nullable=False, index=True)        # Question.id
+    chunk_index = Column(Integer, default=0)
+    content = Column(Text, nullable=False)                         # 用于 embedding 和注入 prompt 的文本
+    metadata_json = Column(Text)                                   # 学科、题型、知识点等
+    content_hash = Column(String(64), nullable=False)              # 判断是否需要重建索引
+    embedding_model = Column(String(100))                          # 生成 embedding 的模型名
+    vector_json = Column(Text)                                     # JSON 数组存储向量
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint('source_type', 'source_id', 'chunk_index', name='uq_rag_chunk_source'),
+    )
+
+
 class EmailVerification(Base):
     """注册邮箱验证码（仅存哈希，不存明文）"""
     __tablename__ = "email_verifications"

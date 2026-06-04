@@ -1,0 +1,37 @@
+gsql扩展-向量数据库
+发布时间：2026-04-16 （2026-04-16）
+pgsql
+由于插件pgvector 的存在，它已经成为目前 RAG（检索增强生成）架构中最主流的选择之一**。**
+
+你不需要为了向量检索专门去买 Pinecone 或 Milvus，用 PG 就能实现“一库多用”。
+
+Bash
+复制代码
+docker pull pgvector/pgvector:pg16
+
+docker run -d  --name pg-vector  -e POSTGRES_PASSWORD=root -p 15432:5432  pgvector/pgvector:pg16
+PL-SQL
+复制代码
+-- 1. 开启扩展
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- 2. 验证：尝试创建一个 3 维向量字段
+CREATE TABLE test_vector (
+    id serial PRIMARY KEY,
+    embedding vector(3)
+);
+
+-- 3. 插入一个向量数据
+INSERT INTO test_vector (embedding) VALUES ('[1, 2, 3]'), ('[4, 5, 6]');
+
+-- 4. 计算余弦相似度查询
+SELECT
+    id, embedding, 1 - (embedding <=> '[0, 2, 1]') AS similarity_score
+FROM test_vector
+ORDER BY similarity_score DESC; -- 相似度越高，排在越前面
+三大核心操作符
+
+操作符	计算方式	适用场景
+<=>	余弦距离 (Cosine)	RAG 最常用。只关注方向，不关注长度（适合文本语义匹配）。
+<->	L2 距离 (欧氏距离)	适合图像检索或需要考虑数值绝对大小的场景。
+<#>	内积 (Inner Product)	适合推荐系统，或者 Embedding 已经过归一化的场景。

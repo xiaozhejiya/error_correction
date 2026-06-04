@@ -11,7 +11,7 @@ from typing import List, Dict, Any, Optional, Tuple
 
 from sqlalchemy.orm import Session, joinedload, selectinload
 
-from db.models import UploadBatch, Question, QuestionEmbedding, KnowledgeTag, QuestionTagMapping
+from db.models import UploadBatch, Question, QuestionEmbedding, KnowledgeTag, QuestionTagMapping, Project
 from db.crud.tags import _parse_tag_list, get_or_create_tag
 
 logger = logging.getLogger(__name__)
@@ -94,6 +94,35 @@ def _question_search_text(question: Question) -> Dict[str, str]:
             " ".join(tags),
         ]),
     }
+
+
+def _ensure_default_question_project(db: Session, user_id=None) -> int:
+    project = (
+        db.query(Project)
+        .filter(
+            Project.user_id == user_id,
+            Project.project_type == "question",
+            Project.is_default == True,
+        )
+        .order_by(Project.id.asc())
+        .first()
+    )
+    if project:
+        return project.id
+
+    project = Project(
+        user_id=user_id,
+        name="默认错题库",
+        project_type="question",
+        summary="",
+        description="",
+        color="#2563eb",
+        icon="database",
+        is_default=True,
+    )
+    db.add(project)
+    db.flush()
+    return project.id
 
 
 def _normalize_search_text(text: str) -> str:
@@ -334,7 +363,22 @@ def question_exists(db, content_hash, user_id=None, project_id=None):
         q = q.filter(Question.user_id == user_id)
     if project_id is not None:
         q = q.filter(Question.project_id == project_id)
-    return q.first()
+    found = q.first()
+    if found or project_id is not None:
+        return found
+
+    candidate_query = db.query(Question)
+    if user_id is not None:
+        candidate_query = candidate_query.filter(Question.user_id == user_id)
+    for candidate in candidate_query.all():
+        if candidate.project_id is None:
+            continue
+        scoped_hash = hashlib.sha256(
+            f"{candidate.project_id}:{content_hash}".encode()
+        ).hexdigest()
+        if candidate.content_hash == scoped_hash:
+            return candidate
+    return None
 
 
 def save_questions_to_db(
@@ -359,7 +403,7 @@ def save_questions_to_db(
     subject = batch_info.get("subject") or "未知"
     project_id = project_id or batch_info.get("project_id")
     if not project_id:
-        raise ValueError("PROJECT_REQUIRED")
+        project_id = _ensure_default_question_project(db, user_id=user_id)
 
     # 创建批次记录
     batch = UploadBatch(
@@ -426,6 +470,22 @@ def save_questions_to_db(
         created += 1
 
     db.commit()
+
+    # 为新建题目建立 RAG 索引（失败不影响主流程）
+    if created > 0:
+        try:
+            from core.rag import index_question
+            created_ids = [q.id for q in db.query(Question).filter(
+                Question.user_id == user_id,
+                Question.project_id == project_id,
+            ).order_by(Question.id.desc()).limit(created).all()]
+            for qid in created_ids:
+                try:
+                    index_question(db, qid)
+                except Exception as e:
+                    logger.warning(f"RAG 索引题目 {qid} 失败: {e}")
+        except ImportError:
+            pass
 
     return {"created": created, "duplicates": duplicates}
 
@@ -585,6 +645,7 @@ def query_questions(
     page_size: int = 20,
     user_id=None,
     project_id=None,
+    include_grand_total: bool = False,
 ) -> Tuple[List[Question], int]:
     """
     统一查询题目（合并 get_history_questions 和 search_questions 的能力）
@@ -642,7 +703,9 @@ def query_questions(
         .all()
     )
 
-    return questions, total, grand_total
+    if include_grand_total:
+        return questions, total, grand_total
+    return questions, total
 
 
 def get_questions_by_ids(db: Session, question_ids: List[int], user_id=None) -> List[Question]:
@@ -696,6 +759,13 @@ def delete_question(db: Session, question_id: int, user_id=None) -> bool:
         db.rollback()
         logger.error(f"删除题目 {question_id} 失败: {e}")
         raise
+
+    # 删除关联的 RAG 索引
+    try:
+        from core.rag import delete_question_chunks
+        delete_question_chunks(db, question_id)
+    except Exception as e:
+        logger.warning(f"删除题目 {question_id} 的 RAG 索引失败（不影响主操作）: {e}")
 
     return True
 

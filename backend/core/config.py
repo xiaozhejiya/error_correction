@@ -198,7 +198,13 @@ class Settings(BaseSettings):
     # 统一运行产物根目录，可通过 APP_RUNTIME_DIR 覆盖
     runtime_dir: Path = _BACKEND_ROOT / "runtime_data"
 
-    # 错题库数据库路径，可通过 APP_DB_PATH 覆盖
+    # 数据库配置：生产/开发优先使用 APP_DATABASE_URL 指向 PostgreSQL。
+    # 若未配置，则回退到本地 SQLite，便于测试和最小化运行。
+    database_url: str = ""
+    database_echo: bool = False
+    postgres_vector_dimensions: int = 1536
+
+    # SQLite 文件路径（仅在未设置 APP_DATABASE_URL 时作为回退）
     db_path: Path | None = None
 
     # 各类子目录（由 validator 从 runtime_dir 派生，可独立覆盖以便测试）
@@ -247,6 +253,9 @@ class Settings(BaseSettings):
     default_paddleocr_use_doc_unwarping: bool = False
     default_paddleocr_use_chart_recognition: bool = False
 
+    # RAG Embedding 配置（复用 OpenAI provider 的 key 和 base_url）
+    rag_embedding_model: str = "text-embedding-3-small"
+
     # 当前生效的系统级托管 provider（来源：数据库优先，环境变量兜底）
     managed_llm_providers: dict[str, LLMProviderConfig] | None = None
     managed_ocr_config: dict[str, object] | None = None
@@ -258,6 +267,8 @@ class Settings(BaseSettings):
     def _resolve_defaults(self):
         if self.db_path is None:
             self.db_path = self.runtime_dir / "error_book.db"
+        if not self.database_url:
+            self.database_url = f"sqlite:///{self.db_path}"
         if self.upload_dir is None:
             self.upload_dir = self.runtime_dir / "uploads"
         if self.pages_dir is None:

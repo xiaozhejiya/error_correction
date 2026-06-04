@@ -85,111 +85,115 @@ def export_wrongbook(
         os.makedirs(settings.results_dir, exist_ok=True)
         output_path = os.path.join(settings.results_dir, "wrongbook.md")
 
-    # 用 uid 过滤选中的题目，保持原始顺序
-    uid_set = set(selected_uids)
-    selected_questions = [q for q in questions if q.get('uid') in uid_set]
+    # 用 uid 或 question_id 过滤选中的题目，保持原始顺序
+    uid_set = set(str(u) for u in selected_uids)
+    selected_questions = []
+    for q in questions:
+        q_uid = str(q.get('uid', ''))
+        q_id = str(q.get('question_id', ''))
+        if (q_uid and q_uid in uid_set) or (q_id and q_id in uid_set):
+            selected_questions.append(q)
 
     # 构建Markdown内容
     md_content = "# 错题本\n\n"
     md_content += f"> 共收录 {len(selected_questions)} 道题目\n\n"
-    md_content += "---\n\n"
-
-    output_dir = os.path.dirname(os.path.abspath(output_path))
-    rel_struct_dir = os.path.relpath(settings.struct_dir, output_dir)
-    _img_src_re = re.compile(r'src="((?:/images/|imgs/)[^"]+)"')
-
-    def _resolve_image_path(p: str) -> str:
-        """将 Agent 输出的图片路径统一转为 Markdown 可用的相对路径。
-
-        Agent 有时输出 '/images/xxx.jpg'（Flask 路由），有时输出 'imgs/xxx.jpg'
-        （LLM 对路径的自由变形），统一映射到 struct_dir/imgs/ 下的相对路径。
-        """
-        p = p.strip()
-        if p.startswith("/images/"):
-            return f"{rel_struct_dir}/imgs/{p[len('/images/'):]}"
-        if p.startswith("imgs/"):
-            return f"{rel_struct_dir}/imgs/{p[len('imgs/'):]}"
-        return p
-
-    def _fix_html_image_src(html: str) -> str:
-        """修正 HTML 内 <img src> 中的图片路径，与独立 image block 保持一致。"""
-        return _img_src_re.sub(
-            lambda m: f'src="{_resolve_image_path(m.group(1))}"', html
-        )
-
-    _INIT = object()  # 初始哨兵，确保第一个有 section_title 的题一定触发标题输出
-    current_section = _INIT
-    unsorted_started = False
-    serial = 0  # 全局序号
-
-    for q in selected_questions:
-        section = q.get('section_title')
-
-        if section:
-            # 有 section_title：正常输出大题分组标题
-            if section != current_section:
-                current_section = section
-                md_content += f"## {section}\n\n"
-        else:
-            # section=None：首次遇到时输出"（未分类）"节标题
-            if not unsorted_started:
-                unsorted_started = True
-                md_content += "## （未分类）\n\n"
-
-        serial += 1
-        md_content += f"### {serial}. 题目 {q.get('question_id', '')} ({q.get('question_type', '未知')})\n\n"
-
-        # 获取图片引用列表，用于填充空的 image block
-        image_refs = q.get('image_refs') or []
-        rendered_images = set()  # 记录已渲染的图片路径（原始路径，供 image_refs 兜底比对）
-
-        # 预扫描：收集已内嵌在 HTML 文本块（如 table）中的图片路径，避免重复渲染
-        html_embedded = set()
-        for block in q.get('content_blocks', []):
-            if block.get('block_type') == 'text':
-                for m in _img_src_re.finditer(block.get('content', '')):
-                    html_embedded.add(m.group(1).strip())
-
-        # 添加内容块（只有 text 和 image，公式以 LaTeX 标记嵌入 text 中）
-        for block in q.get('content_blocks', []):
-            if block['block_type'] == 'text':
-                content = block['content'].replace('\n', '  \n')
-                # 修正 HTML 内嵌图片路径（table 中的 <img src>）
-                content = _fix_html_image_src(content)
-                md_content += f"{content}\n\n"
-            elif block['block_type'] == 'image':
-                image_path = block.get('content', '').strip()
-                if not image_path or image_path in html_embedded:
-                    # 已在 HTML 表格中渲染过，跳过独立 image block 避免重复
-                    continue
-                rendered_images.add(image_path)
-                resolved = _resolve_image_path(image_path)
-                if resolved:
-                    md_content += f"![图片]({resolved})\n\n"
-
-        # 添加选项
-        if q.get('options'):
-            for option in q['options']:
-                md_content += f"{option}  \n"
-            md_content += "\n"
-
-        # 兜底：渲染 image_refs 中未被 content_blocks 覆盖、也未在 HTML 中出现的图片
-        remaining_images = [p for p in image_refs if p not in rendered_images and p not in html_embedded]
-        if remaining_images:
-            for image_path in remaining_images:
-                md_content += f"![图片]({_resolve_image_path(image_path)})\n\n"
-
-        answer_prefix = "####" if section else "###"
-        md_content += f"{answer_prefix} 我的答案\n\n"
-        md_content += "_（请在此处填写你的答案）_\n\n"
-
-        md_content += f"{answer_prefix} 正确答案\n\n"
-        md_content += "_（请在此处填写正确答案）_\n\n"
-
-        md_content += f"{answer_prefix} 解析\n\n"
-        md_content += "_（请在此处填写解题思路和知识点）_\n\n"
-
+    if not selected_questions:
         md_content += "---\n\n"
+    else:
+        output_dir = os.path.dirname(os.path.abspath(output_path))
+        rel_struct_dir = os.path.relpath(settings.struct_dir, output_dir)
+        _img_src_re = re.compile(r'src="((?:/images/|imgs/)[^"]+)"')
+
+        def _resolve_image_path(p: str) -> str:
+            """将 Agent 输出的图片路径统一转为 Markdown 可用的相对路径。"""
+            p = p.strip()
+            if p.startswith("/images/"):
+                return f"{rel_struct_dir}/imgs/{p[len('/images/'):]}"
+            if p.startswith("imgs/"):
+                return f"{rel_struct_dir}/imgs/{p[len('imgs/'):]}"
+            return p
+
+        def _fix_html_image_src(html: str) -> str:
+            """修正 HTML 内 <img src> 中的图片路径，与独立 image block 保持一致。"""
+            return _img_src_re.sub(
+                lambda m: f'src="{_resolve_image_path(m.group(1))}"', html
+            )
+
+        _INIT = object()  # 初始哨兵
+        current_section = _INIT
+        unsorted_started = False
+        serial = 0  # 全局序号
+
+        for q in selected_questions:
+            section = q.get('section_title')
+
+            if section:
+                if section != current_section:
+                    current_section = section
+                    md_content += f"## {section}\n\n"
+            else:
+                if not unsorted_started:
+                    unsorted_started = True
+                    # 如果所有题都没 section，就不单独出节标题，直接出题
+                    if any(other.get('section_title') for other in selected_questions):
+                        md_content += "## （未分类）\n\n"
+
+            serial += 1
+            # 兼容旧测试：如果没 section，题号用 ## 级别
+            header_level = "###" if (section or unsorted_started and any(other.get('section_title') for other in selected_questions)) else "##"
+            md_content += f"{header_level} {serial}. 题目 {q.get('question_id', '')} ({q.get('question_type', '未知')})\n\n"
+
+            # 获取图片引用列表，用于填充空的 image block
+            image_refs = q.get('image_refs') or []
+            rendered_images = set()  # 记录已渲染的图片路径（原始路径，供 image_refs 兜底比对）
+
+            # 预扫描：收集已内嵌在 HTML 文本块（如 table）中的图片路径，避免重复渲染
+            html_embedded = set()
+            for block in q.get('content_blocks', []):
+                if block.get('block_type') == 'text':
+                    for m in _img_src_re.finditer(block.get('content', '')):
+                        html_embedded.add(m.group(1).strip())
+
+            # 添加内容块（只有 text 和 image，公式以 LaTeX 标记嵌入 text 中）
+            for block in q.get('content_blocks', []):
+                if block['block_type'] == 'text':
+                    content = block['content'].replace('\n', '  \n')
+                    # 修正 HTML 内嵌图片路径（table 中的 <img src>）
+                    content = _fix_html_image_src(content)
+                    md_content += f"{content}\n\n"
+                elif block['block_type'] == 'image':
+                    image_path = block.get('content', '').strip()
+                    if not image_path or image_path in html_embedded:
+                        # 已在 HTML 表格中渲染过，跳过独立 image block 避免重复
+                        continue
+                    rendered_images.add(image_path)
+                    resolved = _resolve_image_path(image_path)
+                    if resolved:
+                        md_content += f"![图片]({resolved})\n\n"
+
+            # 添加选项
+            if q.get('options'):
+                for option in q['options']:
+                    md_content += f"{option}  \n"
+                md_content += "\n"
+
+            # 兜底：渲染 image_refs 中未被 content_blocks 覆盖、也未在 HTML 中出现的图片
+            remaining_images = [p for p in image_refs if p not in rendered_images and p not in html_embedded]
+            if remaining_images:
+                for image_path in remaining_images:
+                    md_content += f"![图片]({_resolve_image_path(image_path)})\n\n"
+
+            answer_prefix = "####" if section else "###"
+            md_content += f"{answer_prefix} 我的答案\n\n"
+            md_content += "_（请在此处填写你的答案）_\n\n"
+
+            md_content += f"{answer_prefix} 正确答案\n\n"
+            md_content += "_（请在此处填写正确答案）_\n\n"
+
+            md_content += f"{answer_prefix} 解析\n\n"
+            md_content += "_（请在此处填写解题思路和知识点）_\n\n"
+
+            md_content += "---\n\n"
 
     # 保存Markdown
     with open(output_path, 'w', encoding='utf-8') as f:

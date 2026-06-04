@@ -329,6 +329,7 @@ def get_error_bank():
                 page=page,
                 page_size=page_size,
                 project_id=project_id,
+                include_grand_total=True,
             )
 
             total_pages = (total + page_size - 1) // page_size
@@ -353,20 +354,64 @@ def get_error_bank():
 
 @bp.route('/error-bank/find', methods=['GET'])
 def find_error_bank_questions():
-    """Use a natural language description to find likely questions."""
+    """Use a natural language description to find likely questions.
+
+    优先使用真实 embedding（RAG），降级到 hash 向量。
+    Query参数:
+        q / query: 自然语言描述
+        limit: 返回数量（默认8，最大20）
+        project_id: 项目ID
+    """
     try:
         query_text = (request.args.get('q') or request.args.get('query') or '').strip()
         if not query_text:
             return jsonify({'success': False, 'error': '请输入要查找的题目描述'}), 400
         limit = min(20, max(1, request.args.get('limit', 8, type=int)))
         project_id = _project_id_arg()
+        user_id = _effective_user_id()
 
+        search_mode = "hash"  # 默认降级模式
+
+        # 尝试真实 embedding 语义检索
+        try:
+            from core.rag import retrieve_context
+            with SessionLocal() as db:
+                rag_results = retrieve_context(
+                    db,
+                    query=query_text,
+                    user_id=user_id,
+                    project_id=project_id,
+                    top_k=limit,
+                )
+                if rag_results:
+                    source_ids = [r["source_id"] for r in rag_results]
+                    questions = crud.get_questions_by_ids(db, source_ids, user_id=user_id)
+                    q_map = {q.id: q for q in questions}
+                    items = []
+                    for r in rag_results:
+                        q = q_map.get(r["source_id"])
+                        if q:
+                            payload = _serialize_question_detail(q)
+                            payload['match_score'] = round(r["score"] * 100)
+                            payload['match_reasons'] = ["向量语义相似"]
+                            items.append(payload)
+                    if items:
+                        return jsonify({
+                            'success': True,
+                            'items': items,
+                            'total': len(items),
+                            'search_mode': 'pgvector' if db.bind and db.bind.dialect.name.startswith('postgresql') else 'embedding',
+                        })
+        except Exception as e:
+            logger.debug("RAG 语义检索不可用，降级到 hash: %s", e)
+
+        # 降级到 hash 向量检索
         with SessionLocal() as db:
             matches = crud.find_questions_by_natural_language(
                 db,
                 query_text=query_text,
                 limit=limit,
-                user_id=_effective_user_id(),
+                user_id=user_id,
                 project_id=project_id,
             )
             items = []
@@ -380,10 +425,56 @@ def find_error_bank_questions():
             'success': True,
             'items': items,
             'total': len(items),
+            'search_mode': search_mode,
         })
     except Exception:
         logger.exception("AI find questions failed")
         return jsonify({'success': False, 'error': '找题失败，请稍后重试'}), 500
+
+
+@bp.route('/rag/reindex', methods=['POST'])
+def rag_reindex():
+    """重建当前用户的 RAG 索引"""
+    try:
+        from core.rag import index_question
+
+        user_id = session.get('user_id')
+        project_id = _project_id_body(request.get_json(silent=True) or {})
+
+        with SessionLocal() as db:
+            query = db.query(Question.id).filter(Question.user_id == user_id)
+            if project_id is not None:
+                query = query.filter(Question.project_id == project_id)
+            question_ids = [row[0] for row in query.all()]
+
+        indexed = 0
+        skipped = 0
+        errors = 0
+
+        for qid in question_ids:
+            try:
+                with SessionLocal() as db:
+                    success = index_question(db, qid)
+                    if success:
+                        indexed += 1
+                    else:
+                        skipped += 1
+            except Exception as e:
+                logger.warning("索引题目 %d 失败: %s", qid, e)
+                errors += 1
+
+        return jsonify({
+            'success': True,
+            'message': f'索引完成：成功 {indexed}，跳过 {skipped}，失败 {errors}',
+            'indexed': indexed,
+            'skipped': skipped,
+            'errors': errors,
+            'total': len(question_ids),
+        })
+
+    except Exception as e:
+        logger.exception("重建 RAG 索引失败")
+        return jsonify({'success': False, 'error': '重建索引失败，请稍后重试'}), 500
 
 
 @bp.route('/subjects', methods=['GET'])
@@ -432,10 +523,19 @@ def update_question(question_id):
                     question.answer = str(data['answer'])[:10000] if data['answer'] else None
                 question.updated_at = datetime.utcnow()
                 db.commit()
-                return jsonify({'success': True})
             except Exception:
                 db.rollback()
                 raise
+
+        # 内容更新后重新建立 RAG 索引
+        try:
+            from core.rag import index_question
+            with SessionLocal() as db:
+                index_question(db, question_id)
+        except Exception as e:
+            logger.warning(f"更新题目 {question_id} 的 RAG 索引失败: {e}")
+
+        return jsonify({'success': True})
     except Exception:
         logger.exception("编辑题目失败")
         return jsonify({'success': False, 'error': '保存失败，请稍后重试'}), 500
@@ -457,12 +557,19 @@ def update_question_answer(question_id):
             if not question:
                 return jsonify({'success': False, 'error': '题目不存在'}), 404
 
-            return jsonify({
-                'success': True,
-                'message': '答案已保存',
-                'user_answer': question.user_answer,
-                'updated_at': question.updated_at.isoformat() if question.updated_at else None,
-            })
+        try:
+            from core.rag import index_question
+            with SessionLocal() as db:
+                index_question(db, question_id)
+        except Exception as e:
+            logger.warning(f"更新题目 {question_id} 的用户作答索引失败: {e}")
+
+        return jsonify({
+            'success': True,
+            'message': '答案已保存',
+            'user_answer': question.user_answer,
+            'updated_at': question.updated_at.isoformat() if question.updated_at else None,
+        })
 
     except Exception as e:
         logger.exception("保存答案失败")
@@ -553,9 +660,14 @@ def save_to_db():
         with SessionLocal() as db:
             try:
                 project_id = (
-                    crud.require_project_id(db, project_id, user_id=session.get('user_id'), project_type="question")
+                    crud.require_project_id(
+                        db,
+                        project_id,
+                        user_id=session.get('user_id'),
+                        project_type="question",
+                    )
                     if project_id
-                    else crud.resolve_project_id(db, project_id, user_id=session.get('user_id'), project_type="question")
+                    else None
                 )
             except ValueError as exc:
                 if str(exc) == "PROJECT_REQUIRED":
@@ -744,11 +856,19 @@ def save_question_answer(question_id):
             if not question:
                 return jsonify({'success': False, 'error': '题目不存在'}), 404
 
-            return jsonify({
-                'success': True,
-                'message': '答案已保存',
-                'answer': question.answer,
-            })
+        # 答案更新后重新建立 RAG 索引
+        try:
+            from core.rag import index_question
+            with SessionLocal() as db:
+                index_question(db, question_id)
+        except Exception as e:
+            logger.warning(f"更新题目 {question_id} 的 RAG 索引失败: {e}")
+
+        return jsonify({
+            'success': True,
+            'message': '答案已保存',
+            'answer': question.answer,
+        })
 
     except Exception as e:
         logger.exception("保存答案失败")

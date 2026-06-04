@@ -241,6 +241,38 @@ def resolve_llm_selection(
                 )
 
     if not provider or not getattr(provider, "api_key", ""):
+        # 尝试回退到 settings 中的默认配置
+        default_key = getattr(settings, f"default_{category}_api_key", None)
+        if source == "system" and default_key:
+            # 构造一个临时的 provider 对象或直接返回配置
+            selected_model_name = model_name or getattr(settings, f"default_{category}_model_name", "gpt-4o-mini")
+            
+            request_registry = {
+                name: settings.get_managed_provider(name) for name in LLM_CATEGORIES
+            }
+            request_registry[category] = settings.build_provider_config(
+                category,
+                api_key=default_key,
+                base_url=getattr(settings, f"default_{category}_base_url", ""),
+                model_name=getattr(settings, f"default_{category}_model_name", None),
+                light_model_name=getattr(settings, f"default_{category}_light_model_name", None),
+                supports_function_calling=getattr(settings, f"default_{category}_supports_function_calling", True),
+            )
+            settings.activate_request_providers(request_registry)
+
+            return {
+                "source": "system",
+                "category": category,
+                "provider_id": "default",
+                "provider_name": f"Default {category.upper()}",
+                "model_name": selected_model_name,
+                "api_key": default_key,
+                "base_url": getattr(settings, f"default_{category}_base_url", ""),
+                "supports_function_calling": getattr(settings, f"default_{category}_supports_function_calling", True),
+                "managed_llm": managed_llm,
+                "managed_ocr": managed_ocr,
+            }
+
         raise LLMSelectionError(
             MODEL_PROVIDER_NOT_CONFIGURED,
             (

@@ -34,6 +34,13 @@ from routes import register_routes
 # 加载 backend/.env（无论从哪个目录启动都指向同一文件）
 load_dotenv(os.path.join(_BACKEND_ROOT, ".env"))
 
+# 配置全局日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
 # 模块级日志记录器，日志名称为 'web_app'
 logger = logging.getLogger(__name__)
 
@@ -261,9 +268,15 @@ if __name__ == '__main__':
     settings.ensure_dirs()
 
     # 初始化数据库（建表 + 自动迁移）
-    init_db()
-    from db.migrate import migrate
-    migrate()
+    try:
+        init_db()
+        from db.migrate import migrate
+        migrate()
+    except Exception as e:
+        import traceback
+        logger.error(f"数据库初始化失败: {e}")
+        logger.error(traceback.format_exc())
+        sys.exit(1)
 
     logger.info("错题本生成系统 - API 服务")
     logger.info("API 地址: http://localhost:5001")
