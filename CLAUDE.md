@@ -51,6 +51,8 @@ cd frontend && npm install               # 前端（Node 18+）
 
 复制 `backend/.env.example` → 项目根目录 `.env`，必须配置 `SECRET_KEY`。`core/config.py` 从项目根目录读取 `.env`。LLM API Provider 配置（OpenAI / Anthropic / PaddleOCR）已迁移到数据库，用户在系统设置页面管理。SMTP 邮件配置（注册验证码、找回密码）通过 `.env` 的 `APP_SMTP_*` 变量管理。
 
+> 完整部署流程见 [DEPLOY.md](DEPLOY.md)。
+
 ---
 
 ## 系统架构
