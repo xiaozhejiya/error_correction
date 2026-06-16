@@ -20,7 +20,7 @@ from unittest.mock import patch, MagicMock
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
-from db.models import Base, User, ProviderConfig, SystemProviderConfig, Question
+from db.models import Base, User, ProviderConfig, SystemProviderConfig, Project, Question
 from db import crud
 
 # 测试用户 ID，与 client fixture 中的 session['user_id'] 一致
@@ -60,6 +60,13 @@ def _seed_split_run(db, tmp_path, *, user_id, run_id, question_text):
         question_count=1,
     )
     return questions
+
+
+def _create_question_project(db, *, user_id=TEST_USER_ID, name="默认错题库"):
+    project = Project(user_id=user_id, name=name, project_type="question")
+    db.add(project)
+    db.commit()
+    return project
 
 
 @pytest.fixture
@@ -572,7 +579,27 @@ class TestMultiUserWorkflowRunIsolation:
         assert resp.status_code == 400
         assert test_db.query(Question).count() == 0
 
+    def test_save_to_db_requires_project_id(self, client, test_db, tmp_path):
+        _seed_split_run(
+            test_db,
+            tmp_path,
+            user_id=TEST_USER_ID,
+            run_id="own-run-missing-project",
+            question_text="missing project",
+        )
+
+        resp = client.post(
+            "/api/save-to-db",
+            json={"run_id": "own-run-missing-project", "selected_ids": ["0"]},
+        )
+        assert resp.status_code == 400
+        data = resp.get_json()
+        assert data["success"] is False
+        assert "错题库" in data["error"]
+        assert test_db.query(Question).count() == 0
+
     def test_save_to_db_imports_current_users_run(self, client, test_db, tmp_path):
+        project = _create_question_project(test_db)
         _seed_split_run(
             test_db,
             tmp_path,
@@ -583,7 +610,7 @@ class TestMultiUserWorkflowRunIsolation:
 
         resp = client.post(
             "/api/save-to-db",
-            json={"run_id": "own-run-to-import", "selected_ids": ["0"]},
+            json={"run_id": "own-run-to-import", "selected_ids": ["0"], "project_id": project.id},
         )
         assert resp.status_code == 200
         data = resp.get_json()
@@ -593,6 +620,7 @@ class TestMultiUserWorkflowRunIsolation:
         saved = test_db.query(Question).all()
         assert len(saved) == 1
         assert saved[0].user_id == TEST_USER_ID
+        assert saved[0].project_id == project.id
         assert "import me" in saved[0].content_json
 
 

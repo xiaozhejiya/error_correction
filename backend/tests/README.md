@@ -56,6 +56,7 @@ backend/tests/
 ├── test_web_helpers.py          # web_app.py 纯函数测试
 ├── test_web_routes.py           # Flask 路由集成测试（内存数据库）
 ├── test_crud.py                 # 数据库 CRUD 测试
+├── test_db_init.py              # PostgreSQL / pgvector 初始化与迁移测试
 ├── test_schemas.py              # Pydantic schema 校验测试
 ├── test_question_tools.py       # 题目工具函数测试
 ├── test_correct_node.py         # 纠错节点合并逻辑测试
@@ -135,6 +136,16 @@ backend/tests/
 | `TestGetQuestionsByTag` | `get_questions_by_tag` | 2 | 按标签查题 |
 | `TestGetAllTags` | `get_all_tags` | 2 | 获取全部标签：空库、按科目筛选 |
 | `TestGetStatistics` | `get_statistics` | 2 | 统计信息：空库、有数据 |
+
+### test_db_init.py
+
+测试 `backend/db/__init__.py` 中 PostgreSQL 初始化分支的 DDL 逻辑，使用 mock 验证，不依赖真实 PostgreSQL：
+
+| 测试方法 | 说明 |
+|----------|------|
+| `test_prepare_postgresql_extensions_creates_vector_extension` | 初始化前会尝试创建 `vector` 扩展 |
+| `test_ensure_postgresql_schema_adds_missing_vector_column_and_index` | 缺少 `embedding_vector` 时自动补列并建索引 |
+| `test_ensure_postgresql_schema_skips_column_creation_when_present` | 已存在向量列时不重复 `ALTER TABLE` |
 
 ### test_schemas.py
 

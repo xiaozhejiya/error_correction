@@ -1,6 +1,6 @@
 from db.crud.questions import delete_question
 from db.migrate import _ensure_default_question_project
-from db.models import Project, Question, UploadBatch, User
+from db.models import Project, Question, RagDocumentChunk, UploadBatch, User
 
 
 def test_ensure_default_question_project_creates_immutable_default_project(db):
@@ -68,6 +68,19 @@ def test_delete_question_removes_empty_batch_in_same_operation(db):
     db.add(question)
     db.commit()
 
+    chunk = RagDocumentChunk(
+        user_id=user.id,
+        project_id=None,
+        source_type="question",
+        source_id=question.id,
+        chunk_index=0,
+        content="题目",
+        vector_json="[0.1,0.2]",
+    )
+    db.add(chunk)
+    db.commit()
+
     assert delete_question(db, question.id, user_id=user.id) is True
     assert db.query(Question).filter(Question.id == question.id).first() is None
+    assert db.query(RagDocumentChunk).filter(RagDocumentChunk.source_id == question.id).first() is None
     assert db.query(UploadBatch).filter(UploadBatch.id == batch_id).first() is None

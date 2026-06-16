@@ -85,9 +85,12 @@ def export_wrongbook(
         os.makedirs(settings.results_dir, exist_ok=True)
         output_path = os.path.join(settings.results_dir, "wrongbook.md")
 
-    # 用 uid 过滤选中的题目，保持原始顺序
+    # 优先用 uid 过滤；兼容历史调用中直接传 question_id。
     uid_set = set(selected_uids)
-    selected_questions = [q for q in questions if q.get('uid') in uid_set]
+    selected_questions = [
+        q for q in questions
+        if q.get('uid') in uid_set or str(q.get('question_id', '')) in uid_set
+    ]
 
     # 构建Markdown内容
     md_content = "# 错题本\n\n"
@@ -121,23 +124,25 @@ def export_wrongbook(
     current_section = _INIT
     unsorted_started = False
     serial = 0  # 全局序号
+    has_sections = any(q.get('section_title') for q in selected_questions)
 
     for q in selected_questions:
         section = q.get('section_title')
 
-        if section:
+        if has_sections and section:
             # 有 section_title：正常输出大题分组标题
             if section != current_section:
                 current_section = section
                 md_content += f"## {section}\n\n"
-        else:
+        elif has_sections:
             # section=None：首次遇到时输出"（未分类）"节标题
             if not unsorted_started:
                 unsorted_started = True
                 md_content += "## （未分类）\n\n"
 
         serial += 1
-        md_content += f"### {serial}. 题目 {q.get('question_id', '')} ({q.get('question_type', '未知')})\n\n"
+        heading_level = "###" if has_sections else "##"
+        md_content += f"{heading_level} {serial}. 题目 {q.get('question_id', '')} ({q.get('question_type', '未知')})\n\n"
 
         # 获取图片引用列表，用于填充空的 image block
         image_refs = q.get('image_refs') or []
@@ -179,7 +184,7 @@ def export_wrongbook(
             for image_path in remaining_images:
                 md_content += f"![图片]({_resolve_image_path(image_path)})\n\n"
 
-        answer_prefix = "####" if section else "###"
+        answer_prefix = "####" if has_sections and section else "###"
         md_content += f"{answer_prefix} 我的答案\n\n"
         md_content += "_（请在此处填写你的答案）_\n\n"
 

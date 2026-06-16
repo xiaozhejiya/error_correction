@@ -4,11 +4,30 @@
 
 import uuid
 from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, UniqueConstraint
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.types import TypeDecorator
+from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
 
+from core.config import settings
+
+try:
+    from pgvector.sqlalchemy import Vector
+except ImportError:  # pragma: no cover - optional on SQLite-only setups
+    Vector = None
+
 Base = declarative_base()
+
+
+class EmbeddingVectorType(TypeDecorator):
+    """Use pgvector on PostgreSQL and plain text elsewhere."""
+
+    impl = Text
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "postgresql" and Vector is not None:
+            return dialect.type_descriptor(Vector(settings.postgres_vector_dimensions))
+        return dialect.type_descriptor(Text())
 
 
 class User(Base):
@@ -330,5 +349,6 @@ class RagDocumentChunk(Base):
     content_hash = Column(String(64), default="", index=True)
     embedding_model = Column(String(100), nullable=True)
     vector_json = Column(Text, nullable=True)
+    embedding_vector = Column(EmbeddingVectorType(), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -20,7 +20,7 @@ from datetime import datetime
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
-from db.models import Base, ChatMessage, ProviderConfig, User
+from db.models import Base, ChatMessage, ProviderConfig, SystemProviderConfig, User
 from db import crud
 from tests.conftest import make_question
 
@@ -95,6 +95,21 @@ def _seed_question(test_db):
     crud.save_questions_to_db(test_db, questions, batch_info, user_id=TEST_USER_ID)
     from db.models import Question
     return test_db.query(Question).first()
+
+
+def _seed_system_openai_provider(test_db, model_name="gpt-4o-mini"):
+    provider = SystemProviderConfig(
+        id=str(uuid.uuid4()),
+        category="openai",
+        name="平台托管 OpenAI",
+        is_active=True,
+        api_key="sk-managed",
+        base_url="https://example.com",
+        model_name=model_name,
+    )
+    test_db.add(provider)
+    test_db.commit()
+    return provider
 
 
 # ═══════════════════════════════════════════════════════════
@@ -288,6 +303,7 @@ class TestStreamChat:
         user.daily_free_used = 0
         user.daily_free_quota_date = datetime.utcnow().date().isoformat()
         test_db.commit()
+        _seed_system_openai_provider(test_db)
 
         q = _seed_question(test_db)
         session = crud.create_chat_session(test_db, q.id, user_id=1)
@@ -434,6 +450,7 @@ class TestStreamChat:
         user.daily_free_used = 5
         user.daily_free_quota_date = datetime.utcnow().date().isoformat()
         test_db.commit()
+        _seed_system_openai_provider(test_db)
 
         q = _seed_question(test_db)
         session = crud.create_chat_session(test_db, q.id, user_id=1)

@@ -358,8 +358,6 @@ def save_questions_to_db(
     # 科目由编排智能体识别，不再使用关键词匹配
     subject = batch_info.get("subject") or "未知"
     project_id = project_id or batch_info.get("project_id")
-    if not project_id:
-        raise ValueError("PROJECT_REQUIRED")
 
     # 创建批次记录
     batch = UploadBatch(
@@ -693,6 +691,10 @@ def delete_question(db: Session, question_id: int, user_id=None) -> bool:
 
     try:
         batch_id = question.batch_id
+        from core.rag import delete_question_chunks
+
+        delete_question_chunks(db, question_id)
+
         # 删除关联的标签映射
         db.query(QuestionTagMapping).filter(QuestionTagMapping.question_id == question_id).delete()
 

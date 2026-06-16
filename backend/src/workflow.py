@@ -188,8 +188,8 @@ def _build_overlapping_batches(
 
     n_pages = len(ocr_data)
     if n_pages <= batch_size:
-        # 只有一批：全部页都是 primary
-        return [[dict(page, is_primary=True) for page in ocr_data]]
+        # 只有一批时保留原始结构，默认所有页都视为 primary。
+        return [list(ocr_data)]
 
     step = batch_size - overlap
     batches = []
@@ -550,17 +550,15 @@ def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
     # ── 第一轮：按 (section, qid) 复合键去重 ──────────────────
     groups: Dict[tuple, List[Dict[str, Any]]] = defaultdict(list)
-    no_id: List[Dict[str, Any]] = []
-
     for q in questions:
         qid = q.get("question_id", "")
         if not qid:
-            no_id.append(q)
+            continue
         else:
             section = q.get("section_title") or ""
             groups[(section, qid)].append(q)
 
-    after_round1: List[Dict[str, Any]] = list(no_id)
+    after_round1: List[Dict[str, Any]] = []
     for qs in groups.values():
         after_round1.append(max(qs, key=_question_richness))
 
@@ -573,7 +571,7 @@ def _dedup_questions(questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         by_qid[q.get("question_id", "")].append(q)
 
     SIMILARITY_THRESHOLD = 0.75
-    final: List[Dict[str, Any]] = list(no_id)
+    final: List[Dict[str, Any]] = []
     round2_removed = 0
 
     for qid, entries in by_qid.items():

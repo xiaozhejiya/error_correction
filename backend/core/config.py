@@ -205,6 +205,7 @@ class Settings(BaseSettings):
     db_path: Path | None = None
     database_url: str = ""
     database_echo: bool = False
+    postgres_vector_dimensions: int = 1536
 
     # 各类子目录（由 validator 从 runtime_dir 派生，可独立覆盖以便测试）
     upload_dir: Path | None = None
@@ -225,7 +226,7 @@ class Settings(BaseSettings):
         True  # 是否信任系统代理环境变量，Windows 下设为 False 可解 WinError 10054
     )
 
-    rag_embedding_model: str = "text-embedding-v3"
+    rag_embedding_model: str = "text-embedding-3-small"
     rag_embedding_api_key: str = ""
     rag_embedding_base_url: str = ""
 

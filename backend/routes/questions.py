@@ -456,8 +456,10 @@ def rag_reindex():
                 with SessionLocal() as db:
                     success = index_question(db, qid)
                     if success:
+                        db.commit()
                         indexed += 1
                     else:
+                        db.rollback()
                         skipped += 1
             except Exception as e:
                 logger.warning("索引题目 %d 失败: %s", qid, e)
@@ -531,7 +533,10 @@ def update_question(question_id):
         try:
             from core.rag import index_question
             with SessionLocal() as db:
-                index_question(db, question_id)
+                if index_question(db, question_id):
+                    db.commit()
+                else:
+                    db.rollback()
         except Exception as e:
             logger.warning(f"更新题目 {question_id} 的 RAG 索引失败: {e}")
 
@@ -560,7 +565,10 @@ def update_question_answer(question_id):
         try:
             from core.rag import index_question
             with SessionLocal() as db:
-                index_question(db, question_id)
+                if index_question(db, question_id):
+                    db.commit()
+                else:
+                    db.rollback()
         except Exception as e:
             logger.warning(f"更新题目 {question_id} 的用户作答索引失败: {e}")
 
@@ -624,6 +632,8 @@ def save_to_db():
 
         if not isinstance(selected_uids, list) or not selected_uids:
             return jsonify({'success': False, 'error': '请选择至少一道题目'}), 400
+        if project_id is None:
+            return jsonify({'success': False, 'error': '请先创建并选择一个错题库'}), 400
 
         run_id = data.get('run_id')
         record_id = data.get('record_id')
@@ -677,15 +687,11 @@ def save_to_db():
 
         with SessionLocal() as db:
             try:
-                project_id = (
-                    crud.require_project_id(
-                        db,
-                        project_id,
-                        user_id=session.get('user_id'),
-                        project_type="question",
-                    )
-                    if project_id
-                    else None
+                project_id = crud.resolve_project_id(
+                    db,
+                    project_id,
+                    user_id=session.get('user_id'),
+                    project_type="question",
                 )
             except ValueError as exc:
                 if str(exc) == "PROJECT_REQUIRED":
@@ -878,7 +884,10 @@ def save_question_answer(question_id):
         try:
             from core.rag import index_question
             with SessionLocal() as db:
-                index_question(db, question_id)
+                if index_question(db, question_id):
+                    db.commit()
+                else:
+                    db.rollback()
         except Exception as e:
             logger.warning(f"更新题目 {question_id} 的 RAG 索引失败: {e}")
 

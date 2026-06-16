@@ -868,6 +868,7 @@ class TestRunOcrAndSimplifyFileTypes:
             }]
         }
 
+    @patch.object(PaddleOCRClient, "parse_images_async", new=MagicMock(return_value=[_make_ocr_result.__func__()]))
     @patch("src.workflow.run_async")
     @patch.object(PaddleOCRClient, "parse_pdf")
     @patch.object(PaddleOCRClient, "__init__", return_value=None)
@@ -879,9 +880,11 @@ class TestRunOcrAndSimplifyFileTypes:
         result = _run_ocr_and_simplify(["a.png", "b.jpg"])
 
         mock_pdf.assert_not_called()
+        PaddleOCRClient.parse_images_async.assert_called_once()
         mock_run_async.assert_called_once()
         assert len(result) >= 1
 
+    @patch.object(PaddleOCRClient, "parse_images_async", new=MagicMock())
     @patch("src.workflow.run_async")
     @patch.object(PaddleOCRClient, "parse_pdf")
     @patch.object(PaddleOCRClient, "__init__", return_value=None)
@@ -892,9 +895,11 @@ class TestRunOcrAndSimplifyFileTypes:
         result = _run_ocr_and_simplify(["a.pdf", "b.pdf"])
 
         assert mock_pdf.call_count == 2
+        PaddleOCRClient.parse_images_async.assert_not_called()
         mock_run_async.assert_not_called()
         assert len(result) >= 1
 
+    @patch.object(PaddleOCRClient, "parse_images_async", new=MagicMock(return_value=[_make_ocr_result.__func__()]))
     @patch("src.workflow.run_async")
     @patch.object(PaddleOCRClient, "parse_pdf")
     @patch.object(PaddleOCRClient, "__init__", return_value=None)
@@ -906,10 +911,12 @@ class TestRunOcrAndSimplifyFileTypes:
         result = _run_ocr_and_simplify(["doc.pdf", "img.png"])
 
         mock_pdf.assert_called_once()
+        PaddleOCRClient.parse_images_async.assert_called_once()
         mock_run_async.assert_called_once()
         # PDF 3 blocks + 图片 2 blocks = 2 pages
         assert len(result) == 2
 
+    @patch.object(PaddleOCRClient, "parse_images_async", new=MagicMock())
     @patch("src.workflow.run_async")
     @patch.object(PaddleOCRClient, "parse_pdf")
     @patch.object(PaddleOCRClient, "__init__", return_value=None)
@@ -920,6 +927,7 @@ class TestRunOcrAndSimplifyFileTypes:
         _run_ocr_and_simplify(["DOC.PDF", "test.Pdf"])
 
         assert mock_pdf.call_count == 2
+        PaddleOCRClient.parse_images_async.assert_not_called()
         mock_run_async.assert_not_called()
 
     @patch("src.workflow.run_async")

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from db.models import (
     ChatSession, Note, NoteTagMapping, Project, Question,
-    QuestionEmbedding, QuestionTagMapping, UploadBatch,
+    QuestionEmbedding, QuestionTagMapping, RagDocumentChunk, UploadBatch,
 )
 
 
@@ -141,6 +141,10 @@ def delete_project(db: Session, project_id: int, user_id=None) -> bool:
     # 先删除题目和笔记的关联子表，再删除题目/笔记本身
     question_ids = [q.id for q in db.query(Question.id).filter(Question.project_id == project.id).all()]
     if question_ids:
+        db.query(RagDocumentChunk).filter(
+            RagDocumentChunk.source_type == "question",
+            RagDocumentChunk.source_id.in_(question_ids),
+        ).delete(synchronize_session=False)
         db.query(QuestionEmbedding).filter(QuestionEmbedding.question_id.in_(question_ids)).delete(synchronize_session=False)
         db.query(ChatSession).filter(ChatSession.question_id.in_(question_ids)).delete(synchronize_session=False)
         db.query(QuestionTagMapping).filter(QuestionTagMapping.question_id.in_(question_ids)).delete(synchronize_session=False)

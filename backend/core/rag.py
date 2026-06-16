@@ -317,42 +317,41 @@ def index_question(db: Session, question_id: int) -> bool:
 
     vector_json = _serialize_vector(vector)
 
-    if existing:
-        existing.content = chunk_data["content"]
-        existing.metadata_json = json.dumps(chunk_data["metadata"], ensure_ascii=False)
-        existing.content_hash = chunk_data["content_hash"]
-        existing.embedding_model = settings.rag_embedding_model if vector else None
-        existing.vector_json = vector_json
-    else:
-        chunk = RagDocumentChunk(
-            user_id=question.user_id,
-            project_id=question.project_id,
-            source_type="question",
-            source_id=question_id,
-            chunk_index=0,
-            content=chunk_data["content"],
-            metadata_json=json.dumps(chunk_data["metadata"], ensure_ascii=False),
-            content_hash=chunk_data["content_hash"],
-            embedding_model=settings.rag_embedding_model if vector else None,
-            vector_json=vector_json,
-        )
-        db.add(chunk)
-
     try:
-        db.flush()
-        target_chunk = existing or chunk
-        _write_postgres_vector(db, target_chunk.id, vector)
-        db.commit()
+        with db.begin_nested():
+            if existing:
+                existing.content = chunk_data["content"]
+                existing.metadata_json = json.dumps(chunk_data["metadata"], ensure_ascii=False)
+                existing.content_hash = chunk_data["content_hash"]
+                existing.embedding_model = settings.rag_embedding_model if vector else None
+                existing.vector_json = vector_json
+                target_chunk = existing
+            else:
+                target_chunk = RagDocumentChunk(
+                    user_id=question.user_id,
+                    project_id=question.project_id,
+                    source_type="question",
+                    source_id=question_id,
+                    chunk_index=0,
+                    content=chunk_data["content"],
+                    metadata_json=json.dumps(chunk_data["metadata"], ensure_ascii=False),
+                    content_hash=chunk_data["content_hash"],
+                    embedding_model=settings.rag_embedding_model if vector else None,
+                    vector_json=vector_json,
+                )
+                db.add(target_chunk)
+
+            db.flush()
+            _write_postgres_vector(db, target_chunk.id, vector)
         return True
     except Exception as e:
-        db.rollback()
         logger.error("索引题目 %d 失败: %s", question_id, e)
         return False
 
 
 def delete_question_chunks(db: Session, question_id: int) -> int:
     """删除错题关联的所有 RAG chunk"""
-    count = (
+    return (
         db.query(RagDocumentChunk)
         .filter(
             RagDocumentChunk.source_type == "question",
@@ -360,13 +359,6 @@ def delete_question_chunks(db: Session, question_id: int) -> int:
         )
         .delete(synchronize_session=False)
     )
-    try:
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        logger.error("删除题目 %d 的 chunk 失败: %s", question_id, e)
-        return 0
-    return count
 
 
 # ---------------------------------------------------------------------------

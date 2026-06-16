@@ -2,7 +2,7 @@
 数据库模块：引擎创建、Session 工厂、初始化函数
 """
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import sessionmaker
 import os
 import sys
@@ -154,7 +154,46 @@ def _migrate_schema():
         conn.close()
 
 
+def _prepare_postgresql_extensions():
+    """在 PostgreSQL 建表前确保 pgvector 扩展可用。"""
+    if not is_postgresql_backend(engine):
+        return
+    with engine.begin() as conn:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+
+
+def _ensure_postgresql_schema():
+    """为 PostgreSQL 现有表补齐 pgvector 列和索引。"""
+    if not is_postgresql_backend(engine):
+        return
+
+    inspector = inspect(engine)
+    table_names = set(inspector.get_table_names())
+    if "rag_document_chunks" not in table_names:
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("rag_document_chunks")}
+    with engine.begin() as conn:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        if "embedding_vector" not in columns:
+            conn.execute(
+                text(
+                    "ALTER TABLE rag_document_chunks "
+                    f"ADD COLUMN embedding_vector vector({settings.postgres_vector_dimensions})"
+                )
+            )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS idx_rag_document_chunks_embedding_vector "
+                "ON rag_document_chunks USING ivfflat (embedding_vector vector_cosine_ops) "
+                "WITH (lists = 100)"
+            )
+        )
+
+
 def init_db():
     """初始化数据库：建表并执行轻量级自动迁移"""
+    _prepare_postgresql_extensions()
     Base.metadata.create_all(bind=engine)
     _migrate_schema()
+    _ensure_postgresql_schema()

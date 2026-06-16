@@ -412,21 +412,6 @@ def stream_chat(session_id):
 
         user_id = session.get("user_id")
         with SessionLocal() as db:
-            try:
-                selection = resolve_llm_selection(
-                    db,
-                    user_id=user_id,
-                    category=model_provider,
-                    model_name=model_name,
-                    provider_source=provider_source,
-                    provider_id=provider_id,
-                )
-            except LLMSelectionError as e:
-                return (
-                    jsonify({"success": False, "code": e.code, "error": e.message}),
-                    e.status_code,
-                )
-
             uid = _effective_user_id()
             cs_query = (
                 db.query(ChatSessionModel)
@@ -445,6 +430,21 @@ def stream_chat(session_id):
             chat_session = cs_query.first()
             if not chat_session:
                 return jsonify({"success": False, "error": "对话不存在"}), 404
+
+            try:
+                selection = resolve_llm_selection(
+                    db,
+                    user_id=user_id,
+                    category=model_provider,
+                    model_name=model_name,
+                    provider_source=provider_source,
+                    provider_id=provider_id,
+                )
+            except LLMSelectionError as e:
+                return (
+                    jsonify({"success": False, "code": e.code, "error": e.message}),
+                    e.status_code,
+                )
 
             should_consume_quota = bool(user_id) and uses_server_llm_selection(
                 selection["source"],
