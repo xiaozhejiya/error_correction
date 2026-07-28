@@ -1,0 +1,37 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: error-correction-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      FLASK_DEBUG: "false"
+      APP_RUNTIME_DIR: /app/runtime_data
+      APP_MODEL_PATH: /app/backend/text_eraser_model/weight/best.pth
+      GUNICORN_BIND: 0.0.0.0:8000
+      GUNICORN_WORKERS: "1"
+      GUNICORN_THREADS: "4"
+      GUNICORN_TIMEOUT: "600"
+    ports:
+      - "127.0.0.1:15001:8000"
+    volumes:
+      - backend_runtime:/app/runtime_data
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  backend_runtime:
+    name: error_correction_backend_runtime

@@ -19,6 +19,7 @@ class TestExportWrongbook:
         if content_blocks is None:
             content_blocks = [{"block_type": "text", "content": text}]
         q = {
+            "uid": qid,
             "question_id": qid,
             "question_type": qtype,
             "content_blocks": content_blocks,
@@ -150,5 +151,5 @@ class TestExportWrongbook:
         export_wrongbook([q1, q2], ["1", "2"], output_path=out)
 
         content = open(out, encoding="utf-8").read()
-        assert "## 1. 题目 1" in content
-        assert "## 2. 题目 2" in content
+        assert "### 1. 题目 1" in content
+        assert "### 2. 题目 2" in content

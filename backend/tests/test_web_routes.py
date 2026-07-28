@@ -5,6 +5,7 @@ Flask 路由集成测试
 不依赖外部服务。
 
 覆盖路由：
+- GET  /api/health
 - GET  /api/status
 - GET  /api/history
 - GET  /api/search
@@ -138,6 +139,19 @@ def client(test_db):
 
 
 # ── /api/status ──────────────────────────────────────────
+
+
+class TestHealthRoute:
+    """GET /api/health"""
+
+    def test_returns_success_without_login(self, client):
+        with client.session_transaction() as sess:
+            sess.clear()
+
+        resp = client.get("/api/health")
+
+        assert resp.status_code == 200
+        assert resp.get_json() == {"success": True, "status": "ok"}
 
 
 class TestStatusRoute:
@@ -900,6 +914,11 @@ class TestMultiUserWorkflowRunIsolation:
         assert test_db.query(Question).count() == 0
 
     def test_save_to_db_imports_current_users_run(self, client, test_db, tmp_path):
+        project = crud.create_project(
+            test_db,
+            "Current user bank",
+            user_id=TEST_USER_ID,
+        )
         _seed_split_run(
             test_db,
             tmp_path,
@@ -910,7 +929,11 @@ class TestMultiUserWorkflowRunIsolation:
 
         resp = client.post(
             "/api/save-to-db",
-            json={"run_id": "own-run-to-import", "selected_ids": ["0"]},
+            json={
+                "run_id": "own-run-to-import",
+                "selected_ids": ["0"],
+                "project_id": project.id,
+            },
         )
         assert resp.status_code == 200
         data = resp.get_json()

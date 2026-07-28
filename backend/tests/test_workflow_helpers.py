@@ -223,13 +223,20 @@ class TestBuildOverlappingBatches:
         pages = self._pages(1)
         batches = _build_overlapping_batches(pages, batch_size=2, overlap=1)
         assert len(batches) == 1
-        assert batches[0] == pages
+        assert batches[0] == [
+            {"page_index": 0, "blocks": [], "is_primary": True},
+        ]
+        assert pages == self._pages(1)
 
     def test_exactly_batch_size(self):
         pages = self._pages(2)
         batches = _build_overlapping_batches(pages, batch_size=2, overlap=1)
         assert len(batches) == 1
-        assert batches[0] == pages
+        assert batches[0] == [
+            {"page_index": 0, "blocks": [], "is_primary": True},
+            {"page_index": 1, "blocks": [], "is_primary": True},
+        ]
+        assert pages == self._pages(2)
 
     def test_three_pages(self):
         """3 页, batch=2, overlap=1 → 2 批: [0,1], [1,2]"""
@@ -387,24 +394,31 @@ class TestDedupQuestions:
         assert len(result) == 1
         assert result[0]["content_blocks"][0]["content"] == "abcdef"
 
-    def test_skip_empty_id(self):
-        """空 question_id 应被跳过"""
+    def test_keep_empty_id(self):
+        """空 question_id 仍需保留，避免丢失 OCR 未编号题目。"""
         qs = [
-            {"question_id": "", "content_blocks": [{"content": "skip me"}]},
+            {"question_id": "", "content_blocks": [{"content": "keep unnumbered"}]},
             {"question_id": "1", "content_blocks": [{"content": "keep me"}]},
         ]
         result = _dedup_questions(qs)
-        assert len(result) == 1
-        assert result[0]["question_id"] == "1"
+        assert len(result) == 2
+        assert {q["content_blocks"][0]["content"] for q in result} == {
+            "keep unnumbered",
+            "keep me",
+        }
 
-    def test_skip_missing_id(self):
-        """缺少 question_id 键应被跳过"""
+    def test_keep_missing_id(self):
+        """缺少 question_id 键时仍保留题目内容。"""
         qs = [
             {"content_blocks": [{"content": "no id"}]},
             {"question_id": "2", "content_blocks": [{"content": "has id"}]},
         ]
         result = _dedup_questions(qs)
-        assert len(result) == 1
+        assert len(result) == 2
+        assert {q["content_blocks"][0]["content"] for q in result} == {
+            "no id",
+            "has id",
+        }
 
     def test_sorted_output(self):
         """输出应按题号排序"""

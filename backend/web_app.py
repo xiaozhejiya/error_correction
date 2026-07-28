@@ -86,6 +86,15 @@ def internal_error(error):
     }), 500
 
 
+@app.get('/api/health')
+def health():
+    """容器与反向代理使用的轻量健康检查，不依赖外部 AI 服务。"""
+    return jsonify({
+        'success': True,
+        'status': 'ok'
+    })
+
+
 # ============================================================
 # 全局中间件
 # ============================================================
@@ -96,11 +105,13 @@ def require_login():
 
     豁免列表：
       - /api/auth/*  — 登录、注册、获取当前用户等认证接口
+      - /api/health  — 容器与反向代理健康检查
       - /api/status  — 系统状态查询（前端初始化时需要）
     """
     if request.path.startswith('/api/'):
         if (
             request.path.startswith('/api/auth/')
+            or request.path == '/api/health'
             or request.path == '/api/status'
             or request.path == '/api/device/capture'
         ):

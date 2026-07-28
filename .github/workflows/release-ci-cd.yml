@@ -1,0 +1,351 @@
+name: Application CI/CD
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  backend:
+    name: Test and build backend image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate release tag
+        if: github.event_name == 'push'
+        shell: bash
+        run: '[[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]'
+
+      - name: Check out repository with LFS
+        uses: actions/checkout@v7
+        with:
+          lfs: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run backend tests
+        run: python -m pytest backend/tests -v
+
+      - name: Validate eraser model
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s backend/text_eraser_model/weight/best.pth
+          test "$(wc -c < backend/text_eraser_model/weight/best.pth)" -gt 100000000
+
+      - name: Build production image
+        run: docker build --tag error-correction-backend:${{ github.sha }} .
+
+  frontend:
+    name: Test and package frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate release tag
+        if: github.event_name == 'push'
+        shell: bash
+        run: '[[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]'
+
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run tests
+        working-directory: frontend
+        run: npm test
+
+      - name: Build production assets
+        working-directory: frontend
+        run: npm run build
+
+      - name: Validate and package build
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f frontend/dist/app.html
+          test -d frontend/dist/assets
+          find frontend/dist/assets -type f -print -quit | grep -q .
+          cp frontend/dist/app.html frontend/dist/index.html
+          tar -C frontend/dist -czf error-correction-web.tar.gz .
+
+      - name: Upload production assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: error-correction-web-${{ github.sha }}
+          path: error-correction-web.tar.gz
+          if-no-files-found: error
+          retention-days: 3
+
+  deploy:
+    name: Deploy to 1Panel server
+    if: >-
+      startsWith(github.ref, 'refs/tags/v') ||
+      github.event_name == 'workflow_dispatch'
+    needs:
+      - backend
+      - frontend
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/error_correction' }}
+      FRONTEND_DEPLOY_PATH: ${{ vars.FRONTEND_DEPLOY_PATH || '/opt/1panel/www/sites/lamp.dianchuang.club/index' }}
+      PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://lamp.dianchuang.club/' }}
+      DEPLOY_SHA: ${{ github.sha }}
+    steps:
+      - name: Download frontend assets
+        uses: actions/download-artifact@v7
+        with:
+          name: error-correction-web-${{ github.sha }}
+
+      - name: Validate deployment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          test -n "$DEPLOY_SSH_KEY"
+          test -n "$DEPLOY_KNOWN_HOSTS"
+          test -n "$DEPLOY_PORT"
+          test -n "$DEPLOY_PATH"
+          test -n "$FRONTEND_DEPLOY_PATH"
+          test -n "$PRODUCTION_URL"
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          test -f error-correction-web.tar.gz
+
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$HOME/.ssh/deploy_key"
+          chmod 600 "$HOME/.ssh/deploy_key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Upload frontend assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          scp \
+            -i "$HOME/.ssh/deploy_key" \
+            -P "$DEPLOY_PORT" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            error-correction-web.tar.gz \
+            "$DEPLOY_USER@$DEPLOY_HOST:/tmp/error-correction-$DEPLOY_SHA.tar.gz"
+
+      - name: Activate backend and frontend
+        id: activate
+        shell: bash
+        run: |
+          set -euo pipefail
+          deploy_path_b64="$(printf '%s' "$DEPLOY_PATH" | base64 -w 0)"
+          frontend_path_b64="$(printf '%s' "$FRONTEND_DEPLOY_PATH" | base64 -w 0)"
+          ssh \
+            -i "$HOME/.ssh/deploy_key" \
+            -p "$DEPLOY_PORT" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "DEPLOY_PATH_B64='$deploy_path_b64' FRONTEND_PATH_B64='$frontend_path_b64' DEPLOY_SHA='$DEPLOY_SHA' bash -se" <<'REMOTE'
+          set -euo pipefail
+
+          deploy_path="$(printf '%s' "$DEPLOY_PATH_B64" | base64 -d)"
+          frontend_path="$(printf '%s' "$FRONTEND_PATH_B64" | base64 -d)"
+          case "$deploy_path" in
+            /opt/*) ;;
+            *)
+              echo "Refusing unexpected deployment path: $deploy_path"
+              exit 1
+              ;;
+          esac
+          case "$frontend_path" in
+            /opt/1panel/www/sites/*/index) ;;
+            *)
+              echo "Refusing unexpected 1Panel website path: $frontend_path"
+              exit 1
+              ;;
+          esac
+
+          cd "$deploy_path"
+          test -f .env
+          test -d .git
+          command -v git-lfs >/dev/null
+
+          if ! git diff --quiet || ! git diff --cached --quiet; then
+            echo "Deployment checkout contains tracked local changes; refusing to overwrite them."
+            exit 1
+          fi
+
+          previous_sha="$(git rev-parse HEAD)"
+          site_parent="$(dirname "$frontend_path")"
+          stage_path="$site_parent/.index.next-$DEPLOY_SHA"
+          previous_frontend="$site_parent/.index.previous"
+          archive_path="/tmp/error-correction-$DEPLOY_SHA.tar.gz"
+          backend_changed=false
+          frontend_changed=false
+
+          rollback() {
+            trap - ERR
+            echo "Deployment failed; restoring previous release."
+            rm -rf "$stage_path"
+            if [ "$frontend_changed" = true ]; then
+              rm -rf "$frontend_path"
+              if [ -d "$previous_frontend" ]; then
+                mv "$previous_frontend" "$frontend_path"
+              fi
+            fi
+            if [ "$backend_changed" = true ]; then
+              cd "$deploy_path"
+              git checkout --detach "$previous_sha"
+              git lfs pull origin
+              docker compose up -d --build --remove-orphans
+            fi
+            rm -f "$archive_path"
+          }
+          trap rollback ERR
+
+          printf '%s\n' "$previous_sha" > .deploy-previous-sha
+          git fetch --prune --tags origin
+          git cat-file -e "$DEPLOY_SHA^{commit}"
+          git checkout --detach "$DEPLOY_SHA"
+          backend_changed=true
+          git lfs install --local
+          git lfs pull origin
+          test -f docker-compose.yml
+          test "$(wc -c < backend/text_eraser_model/weight/best.pth)" -gt 100000000
+          docker compose config --quiet
+          docker compose up -d --build --remove-orphans
+
+          healthy=false
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent --show-error \
+              --max-time 5 \
+              http://127.0.0.1:15001/api/health >/dev/null; then
+              healthy=true
+              break
+            fi
+            echo "Backend health check attempt $attempt/45 failed"
+            sleep 2
+          done
+          test "$healthy" = true
+
+          test -d "$site_parent"
+          test -w "$site_parent"
+          test -f "$archive_path"
+          rm -rf "$stage_path"
+          mkdir -p "$stage_path"
+          tar -xzf "$archive_path" -C "$stage_path"
+          test -f "$stage_path/index.html"
+          test -d "$stage_path/assets"
+
+          rm -rf "$previous_frontend"
+          if [ -d "$frontend_path" ]; then
+            mv "$frontend_path" "$previous_frontend"
+            frontend_changed=true
+          fi
+          mv "$stage_path" "$frontend_path"
+          chmod -R u=rwX,go=rX "$frontend_path"
+          rm -f "$archive_path"
+          docker compose ps
+          trap - ERR
+          REMOTE
+          echo "activated=true" >> "$GITHUB_OUTPUT"
+
+      - name: Verify public application
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_url="${PRODUCTION_URL%/}"
+          curl --fail --silent --show-error \
+            --retry 5 \
+            --retry-all-errors \
+            --max-time 20 \
+            "$base_url/" >/dev/null
+          curl --fail --silent --show-error \
+            --retry 5 \
+            --retry-all-errors \
+            --max-time 20 \
+            "$base_url/api/health" >/dev/null
+
+      - name: Roll back failed public deployment
+        if: failure() && steps.activate.outputs.activated == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          deploy_path_b64="$(printf '%s' "$DEPLOY_PATH" | base64 -w 0)"
+          frontend_path_b64="$(printf '%s' "$FRONTEND_DEPLOY_PATH" | base64 -w 0)"
+          ssh \
+            -i "$HOME/.ssh/deploy_key" \
+            -p "$DEPLOY_PORT" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "DEPLOY_PATH_B64='$deploy_path_b64' FRONTEND_PATH_B64='$frontend_path_b64' bash -se" <<'REMOTE'
+          set -euo pipefail
+          deploy_path="$(printf '%s' "$DEPLOY_PATH_B64" | base64 -d)"
+          frontend_path="$(printf '%s' "$FRONTEND_PATH_B64" | base64 -d)"
+          case "$deploy_path" in
+            /opt/*) ;;
+            *)
+              echo "Refusing unexpected deployment path: $deploy_path"
+              exit 1
+              ;;
+          esac
+          case "$frontend_path" in
+            /opt/1panel/www/sites/*/index) ;;
+            *)
+              echo "Refusing unexpected 1Panel website path: $frontend_path"
+              exit 1
+              ;;
+          esac
+          previous_frontend="$(dirname "$frontend_path")/.index.previous"
+
+          if [ -d "$previous_frontend" ]; then
+            rm -rf "$frontend_path"
+            mv "$previous_frontend" "$frontend_path"
+          fi
+
+          cd "$deploy_path"
+          previous_sha="$(cat .deploy-previous-sha)"
+          git checkout --detach "$previous_sha"
+          git lfs pull origin
+          docker compose up -d --build --remove-orphans
+          curl --fail --silent --show-error \
+            --retry 10 \
+            --retry-all-errors \
+            --max-time 5 \
+            http://127.0.0.1:15001/api/health >/dev/null
+          echo "Previous backend and frontend release restored."
+          REMOTE

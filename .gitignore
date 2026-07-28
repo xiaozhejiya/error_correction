@@ -22,7 +22,6 @@ ui-showcase/package-lock.json
 
 # 前端构建产物
 frontend/dist/
-frontend/package-lock.json
 frontend/uploads/
 frontend/output
 presentation-vue/

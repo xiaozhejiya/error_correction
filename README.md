@@ -118,6 +118,10 @@ cd frontend && npm run dev
 
 更完整的启动说明见 [rules/workflow/开发启动规则.md](rules/workflow/开发启动规则.md)，测试与构建说明见 [rules/workflow/测试构建规则.md](rules/workflow/测试构建规则.md)。
 
+生产环境采用单仓库 Tag 发布：后端由 Docker Compose 运行，前端发布到 1Panel
+静态网站目录。配置步骤见 [deploy/cicd.md](deploy/cicd.md) 和
+[deploy/1panel.md](deploy/1panel.md)。
+
 ## 支持的文件格式
 
 PDF(`.pdf`)、图片(`.jpg` `.jpeg` `.png` `.bmp` `.tiff` `.webp`)，单次上传限制 50 MB。
